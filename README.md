@@ -27,10 +27,10 @@ git pull
 git status
 
 # 変更をステージ（自分のファイルだけ指定する）
-git add sections/design_basic.tex
+git add sections/tantoA_basic.tex
 
 # コミット
-git commit -m "担当A：回路図の説明を追記"
+git commit -m "担当A：機能一覧を追記"
 
 # プッシュ
 git push
@@ -42,11 +42,11 @@ git push
 
 | 担当 | 編集するファイル |
 |------|----------------|
-| 担当A | `sections/design_basic.tex` / `sections/design_detail.tex`（担当Aの節） |
-| 担当B | `sections/design_basic.tex` / `sections/design_detail.tex`（担当Bの節） |
-| 担当C | `sections/design_basic.tex` / `sections/design_detail.tex`（担当Cの節） |
-| 担当D | `sections/design_basic.tex` / `sections/design_detail.tex`（担当Dの節） |
-| 全員 | `sections/overview.tex` / `sections/schedule.tex`（代表者1人が担当） |
+| 担当A | `sections/tantoA_basic.tex`（第2章）/ `sections/tantoA_detail.tex`（第3章） |
+| 担当B | `sections/tantoB_basic.tex`（第2章）/ `sections/tantoB_detail.tex`（第3章） |
+| 担当C | `sections/tantoC_basic.tex`（第2章）/ `sections/tantoC_detail.tex`（第3章） |
+| 担当D | `sections/tantoD_basic.tex`（第2章）/ `sections/tantoD_detail.tex`（第3章） |
+| 全員 | `sections/common.tex`（第1章：概要・スコープ・WBS・V&V等） |
 
 **一番大事なルール：編集前に必ず `git pull` してから作業する。同じファイルを同時に触らなければ競合は起きない。**
 
@@ -79,13 +79,14 @@ git push
 hackson2/
 ├── management_plan.tex       # メインファイル（基本触らない）
 ├── sections/
-│   ├── overview.tex          # 1.1 概要・目的・独自性
-│   ├── scope.tex             # 1.2 FBS / PBS
-│   ├── schedule.tex          # 1.3 WBS・ガントチャート
-│   ├── vv_plan.tex           # 1.4 MOE / MOP / TPM
-│   ├── resources.tex         # 1.5 資源・調達管理
-│   ├── risk.tex              # 1.6 リスク管理
-│   ├── design_basic.tex      # 第2章 基本設計
-│   └── design_detail.tex     # 第3章 詳細設計
-└── figures/                  # 図ファイルをここに入れる
+│   ├── common.tex            # 第1章：全員で記入（概要・FBS/PBS・WBS・V&V等）
+│   ├── tantoA_basic.tex      # 担当A：第2章 基本設計
+│   ├── tantoA_detail.tex     # 担当A：第3章 詳細設計
+│   ├── tantoB_basic.tex      # 担当B：第2章 基本設計
+│   ├── tantoB_detail.tex     # 担当B：第3章 詳細設計
+│   ├── tantoC_basic.tex      # 担当C：第2章 基本設計
+│   ├── tantoC_detail.tex     # 担当C：第3章 詳細設計
+│   ├── tantoD_basic.tex      # 担当D：第2章 基本設計
+│   └── tantoD_detail.tex     # 担当D：第3章 詳細設計
+└── figures/                  # 図ファイルをここに入れる（PNG推奨）
 ```
