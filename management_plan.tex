@@ -1,0 +1,100 @@
+\documentclass[lualatex,book,paper=a4paper,jafontsize=11.5pt,jafontscale=1.05]{jlreq}
+
+% フォント
+\usepackage{luatexja-fontspec}
+\usepackage{hack-fonts}
+
+% 表紙
+\usepackage{hack-cover}
+
+% リンク
+\usepackage[hidelinks]{hyperref}
+
+% 画像
+\usepackage{graphicx}
+
+% 表
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{float}
+
+% 数式
+\usepackage{amsmath}
+
+% コード
+\usepackage{listings}
+\usepackage{xcolor}
+
+% リスト
+\usepackage{enumitem}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  frame=single,
+  breaklines=true,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{green!50!black},
+  stringstyle=\color{orange},
+  backgroundcolor=\color{gray!8},
+  tabsize=2,
+}
+
+% 図スペース用コマンド
+\newcommand{\figspace}[2][4]{%
+  \begin{figure}[H]
+    \centering
+    \fbox{\begin{minipage}{0.92\linewidth}
+      \centering\vspace{#1cm}
+      \textit{（#2）}
+      \vspace{#1cm}
+    \end{minipage}}
+  \end{figure}
+}
+
+% =============================================================
+\title{Arduinoオーケストラ}
+\subtitle{〜楽器間同期演奏システム〜}
+\team{グループ32}
+\author{
+  25G1033 : 長見 東磨\\
+  25G1098 : 長野 志哉\\
+  25G1099 : 長山 魁良\\
+  25G1094 : 中村 海惺\\
+  \mbox{} : 飛田\\
+  \mbox{} : 慶田\\
+  \mbox{} : 尾添
+}
+\date{2026年5月13日}
+\version{1.0}
+
+% =============================================================
+\begin{document}
+\maketitle
+
+\setcounter{tocdepth}{2}
+\tableofcontents \thispagestyle{empty}
+
+% =============================================================
+\chapter{プロジェクトの計画書}\label{chap:project-plan}\setcounter{page}{1}
+
+\input{sections/overview}
+\input{sections/scope}
+\input{sections/schedule}
+\input{sections/vv_plan}
+\input{sections/resources}
+\input{sections/risk}
+
+% =============================================================
+\chapter{システムの基本設計}
+
+\input{sections/design_basic}
+
+% =============================================================
+\chapter{システムの詳細設計}
+
+\input{sections/design_detail}
+
+\end{document}

@@ -1,0 +1,18 @@
+# LaTeX ビルド生成物
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+
+# PDF は各自でビルド（バイナリ競合を防ぐ）
+*.pdf
+
+# macOS
+.DS_Store

@@ -1,0 +1,164 @@
+% =====================
+\section{スコープ・マネジメント}
+
+\subsection{成果物}
+
+本プロジェクトの最終的な成果物は，
+サーボモータで駆動する指揮者人形を各楽器ユニットがセンサーで観測することにより，
+楽器間の無線・有線通信なしで自律的に同期し，
+「かえるのうた」の5パート輪唱を演奏する\textbf{Arduinoオーケストラシステム}である．
+
+主な構成要素は以下のとおりである．
+\begin{itemize}
+  \item 親機（指揮者人形ユニット）：Arduino Uno R4 WiFi $\times$ 1台
+  \item 子機（楽器ユニット）：Arduino Uno R4 WiFi $\times$ 5台，各PCにシリアル接続
+  \item 音響合成：Processing（Minimライブラリ）$\times$ 5台
+\end{itemize}
+
+\subsection{プロジェクトの対象範囲と非対象範囲}
+% 全員で記載予定
+（全員で後から記載）
+
+\subsection{機能分解構造FBS}
+
+機能分解構造（Function Breakdown Structure：FBS）を図\ref{fig:fbs}に示す．
+FBSはユーザ視点でシステムが有すべき機能を階層的に分解したものである．
+
+\begin{figure}[H]
+  \centering
+  \fbox{\begin{minipage}{0.92\linewidth}
+    \centering\vspace{4cm}
+    \textit{（FBS図を後から挿入：\texttt{base\_plan/fbs.drawio}）}
+    \vspace{4cm}
+  \end{minipage}}
+  \caption{機能分解構造FBS}
+  \label{fig:fbs}
+\end{figure}
+
+FBSは5つの主機能グループ（L1）とその下位機能（L2）で構成される．
+担当B/Cが担当する機能を以下に示す．
+
+\subsubsection*{担当B：指揮動作検出・演奏制御・状態管理}
+\begin{description}
+  \item[拍タイミング検出（F2a1）]
+    フォトトランジスタによって指揮者人形腕先端のLEDを検出し，
+    拍の基準時刻を割り込み処理で取得する．
+  \item[テンポ推定（F2a3）]
+    連続する拍間隔の時系列データから指数移動平均（EMA）によってテンポを推定する．
+    通常演奏中は$\alpha=0.2$（緩やかな追従），テンポ変化中は$\alpha=0.5$（素早い追従）を用いる．
+  \item[フェルマータ検出（F2a4）]
+    赤外線距離センサーによって腕の静止状態を検出し，フェルマータを識別する．
+  \item[小節同期・見逃し補完（F2a5）]
+    拍が3回連続して未検出の場合に演奏状態を停止へ遷移させるなど，
+    センサー取りこぼしへのフォールバック処理を行う．
+  \item[演奏状態遷移管理（F2e1）]
+    停止・キャリブレーション・予備振り・通常演奏・テンポ変化中・フェルマータ中の
+    6状態を管理する有限状態機械を実装する．
+  \item[異常時フォールバック（F2e2）]
+    3拍連続未検出など異常時に演奏を安全に停止させる処理を担う．
+\end{description}
+
+\subsubsection*{担当C：演奏制御（楽譜・通信）}
+\begin{description}
+  \item[輪唱オフセット制御（F2c1）]
+    各楽器ユニットの演奏開始小節を管理し，
+    ハイハット・バスから始まり順次旋律パートが参加する輪唱構成を実現する．
+  \item[楽譜進行制御（F2c2）]
+    小節カウンタに基づいて楽譜配列のポインタを進め，
+    テンポ区間（80/104\,bpm）の切り替えを行う．
+  \item[テンポ追従演奏（F2c3）]
+    担当Bが推定したテンポに追従して，
+    NOTE\_ON/NOTE\_OFFパケットを適切なタイミングでProcessingへ送信する．
+\end{description}
+
+\subsection{製品分解構造PBS}
+
+製品分解構造（Product Breakdown Structure：PBS）を図\ref{fig:pbs}に示す．
+PBSはシステムを構成する成果物を階層的に分解したものである．
+
+\begin{figure}[H]
+  \centering
+  \fbox{\begin{minipage}{0.92\linewidth}
+    \centering\vspace{4cm}
+    \textit{（PBS図を後から挿入：\texttt{base\_plan/pbs.drawio}）}
+    \vspace{4cm}
+  \end{minipage}}
+  \caption{製品分解構造PBS}
+  \label{fig:pbs}
+\end{figure}
+
+担当B/Cが担当する成果物を以下に示す．
+
+\subsubsection*{担当B：子機ユニット（PB）}
+\begin{description}
+  \item[赤外線センサー配線（PB1a）]
+    腕の位置を連続取得するための赤外線距離センサー回路．
+    出力電圧$V$から距離$d$\,[cm]を次式で算出する．
+    \begin{equation}
+      d = 27.728 \times V^{-1.2045}
+    \end{equation}
+    静止判定・フェルマータ検出・テンポ変化検出に使用する．
+  \item[フォトトランジスタ配線（PB1b）]
+    指揮者人形腕先端LEDを検出し，デジタル割り込みで拍の基準時刻を取得するための受光回路．
+  \item[観測ソフトウェア（PB2a）]
+    センサー値の取得・フィルタリング・距離変換処理を実装するArduinoプログラム．
+  \item[状態機械ソフトウェア（PB2b）]
+    6状態の状態遷移およびEMAによるテンポ推定を実装するArduinoプログラム．
+\end{description}
+
+\subsubsection*{担当C：楽譜・通信ユニット（PC）}
+\begin{description}
+  \item[楽譜配列（PC1a）]
+    「かえるのうた」の5パート分の音符データを配列として定義したデータファイル．
+  \item[輪唱オフセット定義（PC1b）]
+    各楽器の演奏開始小節（0, 0, 2, 4, 6小節目）を定数として定義する．
+  \item[遅延補正値（PC1c）]
+    Arduino→Processing間のシリアル通信遅延を補正するオフセット値．
+    結合テストC1にて実測・確定する．
+  \item[演奏制御ソフトウェア（PC2a）]
+    楽譜ポインタ管理・NOTE\_ON/OFF送信・フェルマータフラグ制御を実装するArduinoプログラム．
+\end{description}
+
+\subsection{FBSとPBSの対応関係}
+
+FBSのすべての機能（L2）に対してPBSのサブ成果物（L3）が1つ以上対応していることを確認する．
+担当B/Cに関わる対応関係を表\ref{tab:fbs-pbs}に示す．
+
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\linewidth}{llX}
+    \toprule
+    FBS機能 & PBS成果物 & 対応の説明 \\
+    \midrule
+    拍タイミング検出（F2a1） &
+      フォトTr配線（PB1b）・観測SW（PB2a） &
+      フォトTrがLEDを検出し，観測SWが割り込みで拍時刻を記録する \\
+    テンポ推定（F2a3） &
+      状態機械SW（PB2b） &
+      EMAアルゴリズムを状態機械内で実装する \\
+    フェルマータ検出（F2a4） &
+      赤外線センサー配線（PB1a）・観測SW（PB2a） &
+      赤外線センサーで腕の静止状態を検出する \\
+    小節同期・見逃し補完（F2a5） &
+      状態機械SW（PB2b） &
+      3拍連続未検出で停止状態へ遷移するフォールバック処理 \\
+    輪唱オフセット制御（F2c1） &
+      輪唱オフセット定義（PC1b）・演奏制御SW（PC2a） &
+      オフセット定数に基づき演奏開始小節を制御する \\
+    楽譜進行制御（F2c2） &
+      楽譜配列（PC1a）・演奏制御SW（PC2a） &
+      楽譜配列を小節カウンタで進め，テンポ区間を切り替える \\
+    テンポ追従演奏（F2c3） &
+      演奏制御SW（PC2a）・遅延補正値（PC1c） &
+      テンポに合わせてNOTE\_ON/OFFの送信タイミングを制御する \\
+    演奏状態遷移管理（F2e1） &
+      状態機械SW（PB2b） &
+      6状態の遷移条件・遷移処理を実装する \\
+    異常時フォールバック（F2e2） &
+      状態機械SW（PB2b） &
+      異常検出時に演奏を安全に停止させる \\
+    \bottomrule
+  \end{tabularx}
+  \caption{FBSとPBSの対応関係（担当B/C）}
+  \label{tab:fbs-pbs}
+\end{table}

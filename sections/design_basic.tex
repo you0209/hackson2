@@ -1,0 +1,148 @@
+% =====================
+\section{機能一覧}
+
+FBSにおける担当B/Cの機能（L2）の詳細を表\ref{tab:functions}に示す．
+
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\linewidth}{llX}
+    \toprule
+    機能ID & 機能名 & 説明 \\
+    \midrule
+    F2a1 & 拍タイミング検出 &
+      フォトTrでLEDを検出し，外部割り込みで拍時刻（\texttt{micros()}）を記録する \\
+    F2a3 & テンポ推定 &
+      連続する拍間隔$\Delta t$からEMAでテンポ$T_n$を推定する \\
+    F2a4 & フェルマータ検出 &
+      赤外線センサーで腕の静止（変化量$<$閾値）を検出し，フェルマータ状態へ移行する \\
+    F2a5 & 見逃し補完 &
+      3拍連続未検出を異常として検出し，停止状態へ安全に遷移する \\
+    F2c1 & 輪唱オフセット制御 &
+      各楽器の演奏開始小節を管理し，適切な小節から演奏を開始する \\
+    F2c2 & 楽譜進行制御 &
+      小節カウンタで楽譜配列のポインタを進め，テンポ区間（80/104\,bpm）を管理する \\
+    F2c3 & テンポ追従演奏 &
+      EMAで推定したテンポに基づき，NOTE\_ON/OFFを適切なタイミングで送信する \\
+    F2e1 & 演奏状態遷移管理 &
+      6状態の有限状態機械を実装し，センサー入力に応じて遷移する \\
+    F2e2 & 異常時フォールバック &
+      異常検出時に演奏を安全に停止させるフォールバック処理を行う \\
+    \bottomrule
+  \end{tabularx}
+  \caption{機能一覧（担当B/C）}
+  \label{tab:functions}
+\end{table}
+
+% =====================
+\section{システム構成図}
+
+システム全体の構成図を図\ref{fig:sysconfig}に示す（後から挿入）．
+担当B/Cが担当する子機Arduinoは，センサー（赤外線・フォトTr）からの入力を処理し，
+シリアル通信でProcessingへNOTE\_ON/OFFパケットを送信する役割を担う．
+
+\begin{figure}[H]
+  \centering
+  \fbox{\begin{minipage}{0.92\linewidth}
+    \centering\vspace{4cm}
+    \textit{（システム構成図を後から挿入）}
+    \vspace{4cm}
+  \end{minipage}}
+  \caption{システム構成図}
+  \label{fig:sysconfig}
+\end{figure}
+
+% =====================
+\section{操作インターフェース設計}
+
+子機ArduinoはPC（Processing）と115200\,bpsのシリアル接続で通信する．
+ユーザ（演奏者）からの直接操作インターフェースは持たず，
+すべての動作は指揮者人形の動きをセンサーで観測することにより自律的に行われる．
+
+子機の外部インターフェースを以下に示す．
+\begin{itemize}
+  \item \textbf{入力}：
+    赤外線距離センサー（アナログ電圧 → A0ピン），
+    フォトトランジスタ（デジタル信号 → D2ピン，外部割り込み）
+  \item \textbf{出力}：
+    シリアル通信パケット（3バイト固定長：FLAG / NOTE / VEL，ボーレート 115200\,bps）
+\end{itemize}
+
+シリアル通信パケット仕様を表\ref{tab:packet}に示す．
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{cclcc}
+    \toprule
+    バイト & フィールド名 & 内容 & 型 & 範囲 \\
+    \midrule
+    0 & FLAG & コマンド種別 & uint8 &
+      \texttt{0x01}=NOTE\_ON，\texttt{0x00}=NOTE\_OFF \\
+    1 & NOTE & 音名インデックス & uint8 & 0〜127（255=休符） \\
+    2 & VEL  & 音の強さ & uint8 & 0〜127 \\
+    \bottomrule
+  \end{tabular}
+  \caption{シリアル通信パケット仕様（3バイト固定長）}
+  \label{tab:packet}
+\end{table}
+
+% =====================
+\section{状態遷移図}
+
+子機Arduinoの状態遷移図を図\ref{fig:state}に示す（後から挿入）．
+各状態の説明と主な遷移条件を表\ref{tab:states}に示す．
+
+\begin{figure}[H]
+  \centering
+  \fbox{\begin{minipage}{0.92\linewidth}
+    \centering\vspace{5cm}
+    \textit{（状態遷移図を後から挿入）}
+    \vspace{5cm}
+  \end{minipage}}
+  \caption{子機Arduino 状態遷移図}
+  \label{fig:state}
+\end{figure}
+
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\linewidth}{lXX}
+    \toprule
+    状態 & 説明 & 主な遷移条件 \\
+    \midrule
+    停止 &
+      演奏前・演奏後の待機状態 &
+      腕の動き検出 → キャリブレーションへ \\
+    キャリブレーション &
+      センサーの最大・最小値を記録する &
+      一定時間経過 → 予備振りへ \\
+    予備振り &
+      テンポと位相を確定する（4拍分） &
+      拍4回検出 → 通常演奏へ \\
+    通常演奏 &
+      EMAでテンポ追従しながら演奏する &
+      誤差率$> \delta$ → テンポ変化中へ \\
+      & &
+      フェルマータ条件成立 → フェルマータ中へ \\
+      & &
+      3拍連続未検出 → 停止へ \\
+    テンポ変化中 &
+      $\alpha=0.5$で素早くテンポ追従する &
+      3拍連続で誤差率$< \delta$ → 通常演奏へ \\
+    フェルマータ中 &
+      NOTE\_OFFを送らず音を伸ばし続ける &
+      腕の動き再開 → 通常演奏へ \\
+    \bottomrule
+  \end{tabularx}
+  \caption{状態遷移一覧}
+  \label{tab:states}
+\end{table}
+
+EMAによるテンポ推定式を式\eqref{eq:ema}に示す．
+\begin{equation}
+  T_n = \alpha \cdot \Delta t_n + (1 - \alpha) \cdot T_{n-1}
+  \label{eq:ema}
+\end{equation}
+\begin{itemize}
+  \item 通常演奏：$\alpha = 0.2$（緩やかに追従，95\%収束まで約13拍）
+  \item テンポ変化中：$\alpha = 0.5$（素早く追従，95\%収束まで約4拍）
+  \item テンポ変化検出閾値：$\delta = 10\,\%$
+\end{itemize}
