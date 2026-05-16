@@ -2,26 +2,443 @@
 \section{担当D — 音響合成（Processing/Minim）}
 
 \subsection{部品一覧}
-（ここに記載）
+
+本システムで使用する主な部品を以下に示す．
+本担当は5パート分のユニットを構成するため，以下の部品を各5台用意する．
+
+\begin{table}[h]
+  \centering
+  \caption{担当D 部品一覧}
+  \label{tab:parts_d}
+  \begin{tabular}{llrl}
+    \hline
+    部品名 & 型番・仕様 & 数量 & 用途 \\
+    \hline
+    PC（Processing実行環境） & Processing 4.x + Minim対応 & 5 & 音響合成・音声出力 \\
+    スピーカーまたはヘッドフォン & — & 5 & 音声再生 \\
+    USB Type-Cケーブル & — & 5 & Arduino子機との接続 \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \subsection{ハードウェア設計}
-（ここに記載）
+本担当では，PC上での音響処理を主体とするため，専用の電子回路は使用しない．
+Arduino子機（担当C）からUSB Type-C Serialを介してデータを受信し，
+PC上のProcessing/Minimにより音響合成を行い，スピーカーへ音声出力する．
+
+本担当は5パート分のユニットを独立して構成し，
+各ユニットはArduino子機1台・PC1台・スピーカー1台の組で動作する．
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.85\linewidth]{figures/hardware_connection_diagram_D.png}
+  \caption{ハードウェア接続図（1ユニット構成 × 5セット）}
+  \label{fig:hardware_D}
+\end{figure}
+
+通信仕様の詳細は確定仕様（\ref{sec:confirmed}節）に示す通りであり，
+115200\,bpsのUSBシリアル通信で3バイトパケット（FLAG / NOTE / VEL）を受信する．
+
+\subsection{楽器音色設計の方針}
+
+聴衆が音楽として自然に認識できるよう，音響工学的な知見に基づき，
+各ユニットに明確な役割を持たせた音色設計を行う．
+
+\subsubsection*{楽器グループの役割}
+\begin{itemize}
+  \item ピアノ・鉄琴・トランペット（主旋律担当）\\
+  倍音成分を調整し，メロディの明瞭さを追求する．
+  基本振幅を高く設定し，常に聴衆の注意を引く音圧とする
+  （基準音量1.0に対し0.8〜1.0）．
+
+  \item バス・スネア（リズムの土台）\\
+  低域のエネルギーとアタックの鋭さで拍を明示する．
+  主旋律を埋もれさせない範囲で，演奏の骨格を維持するために
+  十分な音圧を確保する（基準音量1.0に対し0.6〜0.7）．
+
+  \item ハイハット・シンバル（リズムのアクセント）\\
+  高域の金属音で演奏の華やかさを強調する．
+  リズム楽器と同様の音量方針とする（基準音量1.0に対し0.6〜0.7）．
+\end{itemize}
+
+\subsubsection*{音色設計のアプローチ}
+楽器の音色をデジタル環境で再現するにあたり，以下のプロセスに基づいた設計を行う．
+
+\begin{enumerate}
+  \item 物理特性分析：対象楽器の周波数成分を調和倍音の重なり
+  （ピアノ・鉄琴・トランペット）と非調和・ノイズ成分（打楽器）に分類する．
+
+  \item 合成手法選定：加算合成による倍音構築か，
+  ホワイトノイズをベースとした減算合成か，
+  目的の音響モデルに応じて決定する．
+
+  \item 質感調整：ADSRエンベロープによる時間変化と，
+  LowPass / BitCrusherによる高域・ビット深度の制御を行い，
+  聴覚的な違和感を排除する．
+\end{enumerate}
+
+
+\subsection{音楽的表現の設計}
+
+指揮者のリアルタイムな動作に応じた変化が，
+人間らしい演奏として知覚されるための制御方針を以下に定める．
+
+\subsubsection*{フェルマータの自然な表現}
+通信仕様をNOTE\_ON / NOTE\_OFFのトリガー方式としたことで，
+フェルマータの表現がより自然なものとなった．
+指揮者が静止した際，担当CがNOTE\_OFFの送信を遅らせることで，
+Processing側は特別な処理を行わずともADSRのSustain状態が自動的に延長される．
+これにより，デジタル処理の不自然さを感じさせない，
+生身の演奏に近い「溜め」を実現する．
+
+演奏再開時は，腕再開後に担当CからNOTE\_OFFが送信されることを
+トリガーとしてReleaseを開始し，前の音の余韻を次音に滑らかに溶け込ませることで，
+デジタル特有の不自然な音切れを回避する．
+
+\subsubsection*{テンポ変化時の自然な追従}
+テンポ変化に対し，デジタル的な違和感を排除するための配慮を組み込む．
+急なテンポアップ時に前の音が残っていても，消音せずに新しい音を重ねる
+多重発音を許容し，残響が途切れる不自然さを解消する．
+またテンポ加速時はRelease時間を短縮して歯切れを良くし，
+減速時はReleaseを延長して空白を響きで埋めることで，
+どの速度域でも自然な響きを維持する．
+
+
+\subsection{楽器別音響パラメータ}
+
+各楽器のADSR設定，倍音比率，および適用するエフェクトの数値を
+表\,\ref{tab:adsr_params}に示す．
+実装段階においては，アンサンブル全体のバランスや
+指揮への追従性を考慮し，聴感上の自然さを優先して逐次微調整する方針とする．
+
+\begin{table}[h]
+  \centering
+  \caption{楽器別詳細パラメータ一覧}
+  \label{tab:adsr_params}
+  \begin{tabular}{llcccccc}
+    \hline
+    楽器名 & 波形構成・倍音比率 & A {[s]} & D {[s]} & S {[lvl]} & R {[s]} & フィルタ & Bit \\
+    \hline
+    ピアノ
+      & 1.0, 0.6, 0.4, 0.3, 0.2, 0.1（1〜6次）
+      & 0.01 & 0.15 & 0.2 & 1.00 & 2000\,Hz (LP) & 16 \\
+    鉄琴
+      & 1.0, 0.4（非調和）, 0.1（非調和）
+      & 0.01 & 0.05 & 0.1 & 1.20 & 8000\,Hz (LP) & 16 \\
+    トランペット
+      & 1.0, 0.0, 0.7, 0.0, 0.5（1, 3, 5次）
+      & 0.10 & 0.05 & 0.8 & 0.20 & 3000\,Hz (LP) & 16 \\
+    バス・スネア
+      & Sine（低周波）＋ WhiteNoise
+      & 0.005 & 0.05 & 0.1 & 0.10 & 150\,Hz (LP) & 8 \\
+    シンバル系
+      & WhiteNoise基準
+      & 0.005 & 0.005 & 0.1 & 0.50 & 9000\,Hz (HP) & 10 \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \subsection{ソフトウェア設計}
 
 \subsubsection{ファイル構成}
-（ここに記載）
+
+本システムはProcessingスケッチとして実装し，以下の構成とする．
+
+\begin{itemize}
+
+  \item \texttt{main.pde} \\
+  システム全体の制御を行う．
+  初期化（\texttt{setup()}），メインループ（\texttt{draw()}），
+  およびUIコンポーネント（ポート選択・マスターボリューム・状態モニタ）を含む．
+
+  \item \texttt{CommunicationManager.pde} \\
+  シリアル通信の受信および3バイトデータのパース処理を行う．
+  NOTE\_ON / NOTE\_OFFイベントを生成し，InstrumentUnitへ通知する．
+
+  \item \texttt{InstrumentUnit.pde} \\
+  音響生成処理および楽器ごとの音色管理を行う．
+  UGenチェーンの構築，音高変換，発音・消音制御を統括する．
+
+\end{itemize}
+
+
 
 \subsubsection{オブジェクト設計（クラス図）}
 
-\figspace[3]{クラス図を挿入}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.85\linewidth]{figures/class_diagram_D.png}
+  \caption{クラス図（CommunicationManager / InstrumentUnit / main.pde）}
+  \label{fig:class_D}
+\end{figure}
+
+本システムは以下の主要クラスで構成される．
+
+\begin{itemize}
+
+  \item \texttt{CommunicationManager} \\
+  シリアル通信の受信および3バイトパケット（FLAG / NOTE / VEL）の
+  パースを行い，NOTE\_ON / NOTE\_OFFイベントをInstrumentUnitへ通知する．
+
+  \item \texttt{InstrumentUnit} \\
+  受信イベントに基づき，音高変換，楽器選択，複合音生成，
+  およびUGenチェーンによる音響生成処理を統括する．
+  各楽器パートに対応するインスタンスを独立して保持し，多重発音に対応する．
+
+\end{itemize}
+
+音名インデックスからの周波数変換は，
+平均律式 $f = 440 \times 2^{(n-69)/12}$\,[Hz] を用いる．
+インデックスとMIDIノート番号の対応を表\,\ref{tab:midi_table}に示す．
+
+\begin{table}[h]
+  \centering
+  \caption{音名インデックス → MIDIノート番号 → 周波数 変換テーブル}
+  \label{tab:midi_table}
+  \begin{tabular}{cccc}
+    \hline
+    インデックス（担当C） & 音名 & MIDIノート番号 $n$ & 周波数 $f$\,[Hz] \\
+    \hline
+    0   & C4（ド） & 60              & 261.63 \\
+    1   & D4（レ） & 62              & 293.66 \\
+    2   & E4（ミ） & 64              & 329.63 \\
+    3   & F4（ファ）& 65             & 349.23 \\
+    4   & G4（ソ） & 67              & 392.00 \\
+    5   & A4（ラ） & 69（基準）      & 440.00（基準） \\
+    \hline
+    255 & 休符     & —               & 発音なし \\
+    \hline
+  \end{tabular}
+\end{table}
+
+Velocityは0〜127の値をADSRのSustainレベル（0.0〜1.0）へ正規化し，
+音量制御に反映する．
+
+NOTE\_ON時には\texttt{adsr.noteOn()}，
+NOTE\_OFF時には\texttt{adsr.noteOff()}を呼び出すことで音量包絡を制御する．
+フェルマータ中はNOTE\_OFFが送信されないため，
+Sustainが自動的に延長される．
+複数のNOTE\_ONを許容することで多重発音を実現する．
 
 \subsubsection{関数設計}
-（ここに記載）
+
+主要な関数を以下に示す．
+
+\begin{itemize}
+
+  \item \texttt{setup()} \\
+  Minim，AudioOutput，およびシリアル通信の初期化を行う．
+  各楽器パートのInstrumentUnitインスタンスを生成し，
+  UGenチェーンをAudioOutputへ接続する．
+
+  \item \texttt{draw()} \\
+  メインループとして動作し，
+  UIコンポーネント（状態モニタ・マスターボリューム）の描画更新を行う．
+
+  \item \texttt{serialEvent()} \\
+  シリアルデータ受信時に自動的に呼び出され，
+  受信バイトをバッファへ格納する．
+
+  \item \texttt{parseData()} \\
+  受信バッファから3バイト単位でデータを取り出し，
+  FLAG（\texttt{0x01}=NOTE\_ON / \texttt{0x00}=NOTE\_OFF），
+  音名インデックス，Velocityを抽出して
+  NOTE\_ON / NOTE\_OFFイベントに変換する．
+
+  \item \texttt{noteOn(int noteIndex, int velocity)} \\
+  音名インデックスを周波数に変換し，
+  \texttt{adsr.noteOn()}を呼び出してアタックを開始する．
+  Velocityを正規化してADSRのSustainレベルに反映する．
+
+  \item \texttt{noteOff(int noteIndex)} \\
+  \texttt{adsr.noteOff()}を呼び出し，
+  対象音のADSRをReleaseフェーズへ移行させる．
+
+  \item \texttt{convertToFrequency(int noteIndex)} \\
+  音名インデックスをMIDIノート番号へ変換し，
+  $f = 440 \times 2^{(n-69)/12}$\,[Hz] により周波数を算出する．
+
+  \item \texttt{initInstrument(int partID)} \\
+  指定パートのUGenチェーン（Oscil・ADSR・Filter・BitCrusher）を
+  構築し，AudioOutputへ接続する．
+  楽器ごとのADSRパラメータおよびフィルタ設定を適用する．
+
+  \item \texttt{adjustMasterVolume(float value)} \\
+  UIスライダーからの入力（0.0〜1.0）に基づき，
+  AudioOutputの出力ゲインを調整する．
+
+\end{itemize}
 
 \subsection{処理フローの設計}
 
-\figspace[4]{処理フロー図を挿入}
+本システムの処理は，初期化フローと実行時フローの2つに分けて設計する．
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.85\linewidth]{figures/process_flow_diagram_D.png}
+  \caption{処理フロー図（初期化フロー・実行時フロー）}
+  \label{fig:process_flow_D}
+\end{figure}
+
+\subsubsection*{初期化フロー（\texttt{setup()}）}
+
+\begin{enumerate}
+  \item Minimおよびシリアル通信を初期化する
+  \item 5パート分のInstrumentUnitインスタンスを生成する
+  \item 各パートのUGenチェーンを構築し，AudioOutputへ接続する
+  \item シリアルポートを選択し，通信を開始する
+\end{enumerate}
+
+\subsubsection*{実行時フロー（\texttt{serialEvent()} → \texttt{parseData()}）}
+
+\begin{enumerate}
+  \item シリアルバッファに3バイト以上蓄積されているか確認する
+  \item 3バイトを読み出し，FLAG・音名インデックス・Velocityを抽出する
+  \item FLAGを判定する
+  \begin{itemize}
+    \item FLAG = \texttt{0x01}（NOTE\_ON）の場合：
+    \begin{enumerate}
+      \item 音名インデックスが255（休符）であれば発音せずに終了する
+      \item \texttt{convertToFrequency()}で周波数を算出する
+      \item Velocityを正規化してADSRのSustainレベルに反映する
+      \item \texttt{adsr.noteOn()}を呼び出しアタックを開始する
+    \end{enumerate}
+    \item FLAG = \texttt{0x00}（NOTE\_OFF）の場合：
+    \begin{enumerate}
+      \item \texttt{adsr.noteOff()}を呼び出しReleaseフェーズへ移行する
+    \end{enumerate}
+  \end{itemize}
+  \item メインループへ復帰する
+\end{enumerate}
+
+フェルマータ中は担当CがNOTE\_OFFの送信を保留するため，
+Processing側は追加処理なくSustain状態が自動的に延長される．
+腕再開後にNOTE\_OFFを受信した時点でReleaseへ移行し，
+続くNOTE\_ONで次音の発音を開始する．
+
+
+\subsection{MOE / MOP / TPM}
+
+\subsubsection*{MOE — 有効指標}
+
+\begin{table}[h]
+  \centering
+  \caption{担当D MOE一覧}
+  \label{tab:moe_d}
+  \begin{tabular}{llp{8cm}}
+    \hline
+    ID & 指標 & 説明 \\
+    \hline
+    MOE-D1 & 音楽的に正確な発音・消音
+           & 受信したNOTE情報を正しい音高・音色・タイミングで
+             発音・消音できる \\
+    MOE-D2 & 楽器らしい音色の実現
+           & 各楽器（ハイハット・バス・鉄琴・ピアノ・トランペット）が
+             聴衆に識別できる音色を持つ \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\subsubsection*{MOP — 性能指標}
+
+\begin{table}[h]
+  \centering
+  \caption{担当D MOP一覧}
+  \label{tab:mop_d}
+  \begin{tabular}{llp{3.5cm}p{5cm}}
+    \hline
+    ID & 性能指標 & 目標値 & 測定方法 \\
+    \hline
+    MOP-D1 & 受信→発音遅延
+           & $\leq 50$\,ms
+           & C2テスト: NOTE\_ON受信タイムスタンプとMinimの
+             発音開始を計測（可能であればオシロ） \\
+    MOP-D2 & 消音確実性
+           & NOTE\_OFF受信後 $\leq 100$\,ms以内に確実に消音
+           & C2テスト: 録音データで消音タイミングを確認 \\
+    MOP-D3 & 音高精度
+           & 指定音名との誤差 $\pm 5$\,cent以内
+           & チューナーアプリで各音名の発音周波数を計測 \\
+    MOP-D4 & Serial受信エラーなし
+           & 通し演奏中に受信パースエラー 0回
+           & S1テスト: エラーカウンタ変数をシリアルで監視 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\subsubsection*{TPM — 技術性能指標（開発中に継続監視）}
+
+\begin{table}[h]
+  \centering
+  \caption{担当D TPM一覧}
+  \label{tab:tpm_d}
+  \begin{tabular}{lp{4cm}p{3cm}p{4.5cm}}
+    \hline
+    ID & 監視項目 & 監視タイミング & 判定基準 \\
+    \hline
+    TPM-D1 & 3バイト受信パーサの動作確認
+           & 修正後・P7テスト時
+           & \texttt{FLAG=0x01}でNOTE\_ON，
+             \texttt{0x00}でNOTE\_OFFが
+             正しくトリガーされること \\
+    TPM-D2 & 音名インデックス→周波数変換の整合性
+           & 実装着手時（C-D合意後）
+           & C4=0のインデックスが
+             $f=261.6$\,Hzに変換されること \\
+    TPM-D3 & ADSRパラメータの音色調整状況
+           & 実装中・P7テスト時
+           & 各楽器が識別可能な音色を持ち，
+             音量バランスが取れていること \\
+    TPM-D4 & Minimライブラリ動作環境の統一
+           & 実装着手前
+           & 5台のPC全てでProcessing + Minimが
+             正常動作すること（バージョン統一） \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \subsection{テストの設計}
-どのようにテストを行うのか，例えば，テストデータの設計などを記述．
+
+本システムのテストは，事前確認テスト・結合テスト・システムテストの
+3フェーズで実施する．
+各テストの内容および合格基準を以下に示す．
+
+\begin{table}[h]
+  \centering
+  \caption{担当D テスト計画}
+  \label{tab:test_d}
+  \begin{tabular}{llp{5cm}p{4cm}}
+    \hline
+    ID & テスト名 & 内容 & 合格基準 \\
+    \hline
+    P7 & Processing音響出力確認
+       & 手動で3バイト（\texttt{0x01}, NOTE, VEL）を
+         シリアル送信し，指定音が発音されるか確認する
+       & 正しい音高・音量で発音される \\
+    C2 & C-D間同期確認
+       & ArduinoのNOTE\_ON送信から発音までの遅延を計測する．
+         またNOTE\_OFF受信時に確実に消音されるか確認する
+       & 遅延 $\leq$ 50\,ms，NOTE\_OFF時に確実に消音 \\
+    S1 & 通し演奏・BPM維持評価
+       & 全15小節以上の通し演奏で音響品質・タイミングを評価する
+       & BPM誤差 $\pm$5\,bpm以内，発音ミスなし \\
+    \hline
+  \end{tabular}
+\end{table}
+
+また，開発中の音色調整を目的として，以下の評価を随時実施する．
+
+\begin{itemize}
+  \item 音高精度確認 \\
+  チューナーアプリで各音名の発音周波数を計測し，
+  目標値との誤差が$\pm$5\,cent以内であることを確認する．
+
+  \item 聴感評価 \\
+  各楽器音が聴衆に識別可能な音色を持つことを
+  人間の聴感により確認する．
+
+  \item スペクトラム評価 \\
+  外部ツールを用いて既存音源と生成音のスペクトラムを比較し，
+  基音および主要倍音の構成を確認する．
+  ADSRパラメータおよびフィルタ設定の調整に活用する．
+\end{itemize}
