@@ -3,54 +3,201 @@
 
 \subsection{機能一覧}
 本担当では，Arduino（担当C）から送信されるシリアル通信データを受信し，
-
 Processing上で音響合成を行い，各楽器音をリアルタイムに出力する機能を実装する．
 
 主な機能は以下の通りである．
 
 \begin{itemize}
 
-  \item シリアル通信受信機能  
+  \item シリアル通信受信機能 \\
+  Arduinoから送信される3バイトパケット（FLAG / NOTE / VEL）を受信し，
+  NOTE\_ONおよびNOTE\_OFFイベントとして解釈する．
+  ボーレートは115200\,bpsとする．
 
-  Arduinoから送信される3バイトパケット（FLAG / NOTE / VEL）を受信し，NOTE\_ONおよびNOTE\_OFFイベントとして解釈する．
+  \item 受信データパース機能 \\
+  受信したバイト列を3バイト単位で解析し，
+  FLAG（\texttt{0x01}=NOTE\_ON / \texttt{0x00}=NOTE\_OFF），
+  音名インデックス，およびベロシティ情報を抽出する．
 
-  \item 受信データパース機能  
+  \item 音高変換機能 \\
+  音名インデックス（C4=0, D4=1, E4=2, F4=3, G4=4, A4=5，休符=255）を
+  MIDIノート番号へ変換し，
+  $f = 440 \times 2^{(n-69)/12}$\,[Hz] により周波数を算出する．
+  変換テーブルは担当Cと合意のうえ実装する．
 
-  受信したバイト列を3バイト単位で解析し，音名インデックスおよび音量情報を抽出する．
+  \item 音響合成機能 \\
+  Minimライブラリを用い，Oscil・ADSR・フィルタ・BitCrusherを
+  直列接続したUGenチェーンにより各楽器音をリアルタイムに生成する．
 
-  \item 音高変換機能  
+  \item 楽器音色生成機能 \\
+  ハイハット・シンバル，バスドラム・スネア，鉄琴，ピアノ，トランペットの
+  5パートそれぞれに対し，倍音比率・ADSRパラメータ・フィルタ設定を
+  個別に定義し，識別可能な音色を実現する．
 
-  音名インデックスをMIDIノート番号へ変換し，周波数に変換する．
+  \item 複合音生成機能 \\
+  ハイハット＋シンバル，バスドラム＋スネアのように，
+  1つのNOTE\_ONイベントで複数の音源を同時に発音する．
 
-  \item 音響合成機能  
+  \item 発音・消音制御機能 \\
+  NOTE\_ON受信時にADSRのアタックを開始し，NOTE\_OFF受信時にリリースへ移行する．
+  フェルマータ中はNOTE\_OFFが送信されないため，
+  Processing側は特別な処理を行わずSustain状態を維持する．
+  腕再開後に担当CからNOTE\_OFFが送信された時点でリリースを開始し，
+  続くNOTE\_ONで次音を発音する．
 
-  Minimライブラリを用い，Oscil・ADSR・フィルタ等を組み合わせたUGenチェーンにより音を生成する．
+  \item 多重発音機能 \\
+  テンポ変化時など前音のリリース中に次音のNOTE\_ONが到達した場合，
+  前音を強制消音せずに重ねて発音することで，
+  音の途切れによる不自然さを回避する．
 
-  \item 楽器音色生成機能  
+  \item 操作インターフェース機能 \\
+  ハッカソン本番での迅速なセットアップを支援するため，
+  シリアルポートのドロップダウン選択UI，マスターボリュームスライダー（0〜100\,\%），
+  およびシステム状態（IDLE / PLAYING）のリアルタイム表示パネルをProcessing上に実装する．
 
-  各楽器（ハイハット，バスドラム，鉄琴，ピアノ，トランペット）に応じた音色パラメータを設定する．
-
-  \item 複合音生成機能  
-
-  ハイハット＋シンバル，バスドラム＋スネアのように，1イベントで複数音を同時生成する．
-
-  \item 発音・消音制御機能  
-
-  NOTE\_ONで発音開始，NOTE\_OFFでADSRに従い減衰させる．
-
-  \item スペクトラム解析による音色調整機能  
-
-  外部ツールを用いて既存音源とのスペクトラム比較を行い，音色パラメータ（ADSR・フィルタ等）を調整する．
+  \item デバッグ・ログ出力機能 \\
+  受信パケット（FLAG / NOTE / VEL）のパース結果およびNOTE\_ON/OFFイベントの
+  発音タイミングをシリアルモニタへ出力し，開発・動作確認を支援する．
 
 \end{itemize}
 
 \subsection{システム構成図}
+本構成図では，担当D（Processing/Minim）の内部構成と，
+上流の担当C（Arduino子機）および下流のスピーカー出力との接続関係を示す．
 
-\figspace[4]{システム構成図（担当D関連）を挿入}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.9\linewidth]{figures/system_diagram_D.png}
+  \caption{担当D システム構成図}
+  \label{fig:system_diagram_D}
+\end{figure}
+
+図に示す通り，本システムは以下の3層で構成される．
+
+\begin{description}
+  \item[通信層 --- CommunicationManager]
+  Arduino子機からUSB Type-C Serialを介して115200\,bpsで送信される
+  3バイトパケット（FLAG / NOTE / VEL）を受信・解析し，
+  NOTE\_ONおよびNOTE\_OFFイベントとして音響層へ通知する．
+  また，シリアルポート選択UIおよびログ出力を管理する．
+
+  \item[音響合成層 --- InstrumentUnit]
+  受信イベントに基づき，音高変換，楽器選択，波形生成，およびUGenチェーンによる
+  音響合成処理を統括する．
+  各楽器パートに対応するInstrumentUnitインスタンスを独立して保持し，
+  複合音・多重発音にも対応する．
+
+  \item[出力層 --- AudioOutput]
+  Minimライブラリの\texttt{AudioOutput}を通じてスピーカーへ音響信号を送出する．
+  マスターボリュームスライダーによりアンサンブル全体の音量を調整可能とする．
+\end{description}
+
+各層間のデータフローを以下に示す．
+
+\begin{center}
+\texttt{Arduino子機} $\xrightarrow{\text{Serial 115200bps / 3B}}$
+\texttt{CommunicationManager} $\xrightarrow{\text{NOTE\_ON/OFF}}$
+\texttt{InstrumentUnit} $\xrightarrow{\text{UGenチェーン}}$
+\texttt{AudioOutput} $\rightarrow$ \texttt{スピーカー}
+\end{center}
+
+なお，UGenチェーンの詳細（Oscil・ADSR・フィルタ・BitCrusherの接続構成）は
+\ref{sec:ugen}節に示す．
+
+\subsection{音響合成チェーン}
+\label{sec:ugen}
+受信したNOTE情報は，直ちに以下のUGenチェーンに渡され，
+各楽器音がリアルタイムに合成・出力される．
+
+\begin{center}
+\texttt{Oscil（基音＋倍音）} $\rightarrow$
+\texttt{ADSR} $\rightarrow$
+\texttt{Filter（LowPassFS / HighPassFS）} $\rightarrow$
+\texttt{BitCrusher} $\rightarrow$
+\texttt{AudioOutput}
+\end{center}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.9\linewidth]{figures/ugen_chain_diagram.png}
+  \caption{音響合成チェーン（UGen構成）}
+  \label{fig:ugen_chain}
+\end{figure}
+
+基音の生成から始まり，倍音の付加，ADSRによる音量エンベロープの適用，
+フィルタによる帯域調整，BitCrusherによる質感付加を経て，
+最終的なスピーカー出力となる．
+各ユニットの詳細なパラメータ設定については詳細設計（\ref{sec:detail}節）に示す．
 
 \subsection{操作インターフェース設計}
-（ここに記載）
+ハッカソン本番の現場における迅速なセットアップと，
+演奏中の確実な状態把握を目的として，
+Processing上に以下のコントロールパネルを実装する．
+
+\subsubsection{ポート選択UIと通信初期化}
+各PCにおけるArduinoの認識状況（COMポート番号）が異なることを想定し，
+シリアルポートをドロップダウン形式で動的に選択できるUIを配置する．
+接続失敗時には警告メッセージを表示し，現場での迅速なトラブルシューティングを支援する．
+
+\subsubsection{マスターボリューム・コントロール}
+5台のPCから出力される音量を合奏形式で調整するため，
+0〜100\,\%の範囲で操作可能なマスターボリュームスライダーを設ける．
+各PCのOS音量設定に依存することなく，
+アンサンブルの聴感上のバランスをリハーサル中に即座に最適化できる．
+
+\subsubsection{リアルタイム状態モニタ}
+演奏中のシステム内部状態を視覚的に表示するステータスパネルを実装する．
+表示する状態は担当Bの状態機械に準拠し，
+表\,\ref{tab:states}に示す6状態に対応する．
+
+\begin{table}[h]
+  \centering
+  \caption{状態モニタの表示状態一覧}
+  \label{tab:states}
+  \begin{tabular}{ll}
+    \hline
+    状態名 & 説明 \\
+    \hline
+    IDLE          & 待機中（シリアル入力待ち） \\
+    CALIBRATE     & キャリブレーション中 \\
+    PREBEAT       & 予備振り受信済み・発音待機中 \\
+    PLAYING       & 演奏中 \\
+    FERMATA       & フェルマータ中（Sustain維持） \\
+    TEMPO\_CHANGE & テンポ変化追従中 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+Arduinoから受信したイベント（NOTE\_ON / NOTE\_OFF）および
+担当BのグローバルなSTATE変数に応じてパネルの色を切り替え，
+開発・デバッグ時の動作確認を支援する．
 
 \subsection{状態遷移図}
+本システムはイベント駆動型であり，
+担当BのSTATE変数およびArduinoからのNOTE\_ON/OFFイベントを
+トリガとして動作する．
+担当Dの状態管理はシンプルな2状態で構成される．
 
-\figspace[4]{状態遷移図を挿入}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.75\linewidth]{figures/state_transition_diagram_D.png}
+  \caption{担当D 状態遷移図（IDLE / PLAYING）}
+  \label{fig:state_transition_D}
+\end{figure}
+
+\begin{description}
+  \item[IDLE]
+  初期状態．シリアル入力待機中．
+  NOTE\_ON受信によりPLAYING状態へ遷移する．
+
+  \item[PLAYING]
+  発音中の状態．ADSRに従って音を維持する．
+  NOTE\_OFF受信によりReleaseフェーズを経てIDLEへ復帰する．
+  フェルマータ中（担当BのSTATE = FERMATA）は
+  NOTE\_OFFが送信されないため，Sustainが自動的に延長される．
+  腕再開後に担当CからNOTE\_OFFが送信された時点でReleaseを開始する．
+\end{description}
+
+なお，複数パートの同時発音においては，
+各InstrumentUnitインスタンスが独立した状態を保持するため，
+あるパートがPLAYING中であっても他パートは独立してIDLE/PLAYINGを遷移できる．
