@@ -1,29 +1,353 @@
-% ===================== 担当B =====================
 \section{担当B — センサ処理・状態機械}
 
+担当 B は，子機 Arduino における指揮者人形の観測・テンポ推定・状態管理 を担う．
+センサ構成は赤外線センサ（距離取得）とフォトトランジスタ（LED 検出）の 2 種類であり，
+両センサの情報を組み合わせてテンポ状態を判定し，発音タイミングを決定する．
+
 \subsection{部品一覧}
-（ここに記載）
+
+\begin{table}[H]
+\centering
+\caption{使用部品一覧}
+\begin{tabular}{p{4cm}p{6cm}p{2cm}p{3cm}}
+\hline
+\textbf{部品名} & \textbf{型番} & \textbf{ピン} & \textbf{用途} \\
+\hline
+赤外線センサ & シャープ測距モジュール GPY0A21YK & A0 & 腕までの距離計測 \\
+\hline
+フォトトランジスタ & 照度センサー NJL7502L (560nm) & 2 & 拍タイミングのLED検出（割り込み使用） \\
+\hline
+Arduino（子機） & — & — & センサ処理・テンポ推定・状態管理 \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{ハードウェア設計}
-（ここに記載）
 
-\figspace[4]{回路図・センサ配線図を挿入}
+赤外線センサ（GPY0A21YK）はアナログピン \texttt{A0} に接続し，
+フォトトランジスタ（NJL7502L）はデジタルピン \texttt{2}（外部割り込み対応）に接続する．
+電源電圧は $V_{\text{ref}} = 5.0\,\text{V}$ とする．
+
+赤外線センサの出力電圧$V$から距離$d$ [cm] への変換は以下の近似式を用いる．
+
+\begin{equation}
+  d = 27.728 \times V^{-1.2045}
+\end{equation}
+
+フォトトランジスタは \texttt{attachInterrupt} による外部割り込みで拍検出時刻を取得する．
+
+図\ref{fig:circuit} に回路図を示す．
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/Kairo_B.pdf}
+\caption{回路図}
+\label{fig:circuit}
+\end{figure}
 
 \subsection{ソフトウェア設計}
 
 \subsubsection{ファイル構成}
-（ここに記載）
+
+\begin{table}[H]
+\centering
+\caption{ファイル構成}
+\begin{tabular}{p{4.5cm}p{8.5cm}}
+\hline
+\textbf{ファイル名} & \textbf{内容} \\
+\hline
+\texttt{hackson\_main.ino} & BとCの共通部分．\texttt{setup()} および \texttt{loop()} のエントリポイント，共有変数の宣言を含む． \\
+\hline
+\texttt{B.ino} & 担当Bの独立部分．センサ読み取り・テンポ推定・状態機械の実装． \\
+\hline
+\texttt{C.ino} & 担当Cの独立部分．発音タイミング制御・信号出力の実装． \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsubsection{オブジェクト設計（クラス図）}
 
-\figspace[3]{クラス図を挿入}
+本システムはArduino上で動作するため，クラスを用いず関数と
+グローバル変数で構成する．
+主要変数を以下に示す．
+
+\begin{lstlisting}[caption=担当 B 主要変数]
+// 赤外線センサ
+volatile float irDistance = 0.0f; // 赤外線センサによる距離 [cm]
+const int irWindowSize = 3;       // 移動平均のためのサンプル数
+float irDistances[irWindowSize] = {0.0f}; // 距離バッファ（移動平均用）
+float d_bar_n = 0.0f;    // 現在の距離移動平均（正規化済み） [%]
+float d_bar_prev = 0.0f; // 前回の距離移動平均（正規化済み） [%]
+
+// フォトトランジスタ
+bool beatDetected = false; // 拍検出フラグ（割り込みでセット）
+
+// キャリブレーション
+float irMax = 0.0f;    // キャリブレーション中の距離最大値 [cm]
+float irMin = 9999.0f; // キャリブレーション中の距離最小値 [cm]
+
+// EMA テンポ推定
+float T_n = 500.0f;         // 現在の拍間隔推定値 [us]
+float alpha = 0.2f;         // EMA 係数
+unsigned long t_beat = 0;   // 現在の拍の検出時刻 [us]
+unsigned long t_prev = 0;   // 前回の拍の検出時刻 [us]
+unsigned long t_next = 0;   // 次回の推定拍検出時刻 [us]
+const float TEMPO_CHANGE_THRESH = 10.0f; // テンポ変化判定閾値 [%]
+float tempoErrorRate = 0.0f; // テンポ誤差率 [%]
+bool isTempoChanged = false; // テンポ変化判定フラグ
+bool beatUpdated = false;    // 推定拍更新フラグ（担当Ｃと共有）
+
+// 赤外線センサによるテンポ推定
+unsigned long tPredictBeat = 0; // 赤外線センサによる次の拍の推定絶対時刻 [us]
+
+// 状態機械
+enum State {IDLE, CALIBRATE, PREBEAT, PLAYING, TEMPO_CHANGE, FERMATA};
+State state = IDLE; // 現在の状態（担当Ｃと共有）
+
+// 予備振り
+int prebeatCount = 0;         // 予備振りカウント
+const int PREBEAT_THRESH = 4; // 必要な予備振り回数
+
+// テンポ変化からの通常演奏復帰
+int stableCount = 0;         // 安定拍連続カウント
+const int STABLE_THRESH = 3; // 復帰に必要な安定拍数
+
+// 静止判定
+const float STOP_THRESH = 5.0f; // 静止と判定される移動距離 [%]（要調整）
+
+// フェルマータ判定
+int staticCount = 0;          // 静止サンプル連続カウント
+const int FERMATA_THRESH = 3; // フェルマータ判定に必要な静止サンプル連続数
+
+// フォールバック
+int missedBeats = 0;         // 連続未検出拍数
+const int MISS_THRESH = 3;   // 演奏中止に必要な未検出拍数
+
+// その他
+const float vRef = 5.0f;     // 電源電圧 [V]
+#define IR_PIN A0            // 赤外線センサのピン
+#define PHOTO_PIN 2          // フォトトランジスタのピン
+\end{lstlisting}
 
 \subsubsection{関数設計}
-（ここに記載）
+
+担当 B と担当 C は同一の Arduino 上で動作するため，以下のグローバル変数を共有することで連携する．
+担当 B が書き込み，担当 C が読み取る変数を以下に示す．
+
+\begin{table}[H]
+\centering
+\caption{担当 C との共有変数一覧}
+\begin{tabular}{p{3.5cm}p{2.5cm}p{4cm}p{4cm}}
+\hline
+\textbf{変数名} & \textbf{型} & \textbf{担当Bの役割} & \textbf{担当Cの使い方} \\
+\hline
+\hline
+\texttt{t\_next} & \texttt{unsigned long} &
+次の拍の予測絶対時刻を書き込む & 信号送信タイミングの基準として読む \\
+\hline
+\texttt{beatUpdated} & \texttt{bool} &
+\texttt{t\_next} が更新されたら \texttt{true} にする &
+\texttt{true} を検知して処理後 \texttt{false} に戻す \\
+\hline
+\texttt{state} & \texttt{State} &
+現在の演奏状態を書き込む &
+FERMATA 判定などに使う \\
+\hline
+\end{tabular}
+\end{table}
+
+なお，\texttt{beatUpdated} を \texttt{false} にリセットする責任は担当 C 側にある．
+
+主要関数の一覧を以下に示す．
+
+\begin{table}[H]
+\centering
+\caption{担当 B 主要関数一覧}
+\begin{tabular}{p{3.5cm}p{4cm}p{4cm}p{4.5cm}}
+\hline
+\textbf{関数名} & \textbf{入力} & \textbf{出力} & \textbf{役割} \\
+\hline
+\hline
+\texttt{void photoISR()} &
+\texttt{state} &
+\texttt{t\_beat},
+\texttt{beatDetected},
+\texttt{prebeatCount} &
+フォトトランジスタ割り込み処理を行い，
+拍検出時刻と予備振り回数を更新する． \\
+\hline
+\texttt{void readIR()} &
+\texttt{IR\_PIN},
+\texttt{vRef} &
+\texttt{irDistance},
+\texttt{irDistances[]} &
+赤外線センサから距離を取得し，
+移動平均用バッファを更新する． \\
+\hline
+\texttt{void calibrate()} &
+\texttt{irDistance},
+\texttt{irMax},
+\texttt{irMin} &
+\texttt{irMax},
+\texttt{irMin} &
+キャリブレーション中の
+距離最大値・最小値を更新する． \\
+\hline
+\texttt{void updateDBar()} &
+\texttt{irDistances[]},
+\texttt{irWindowSize},
+\texttt{irMax},
+\texttt{irMin} &
+\texttt{d\_bar\_prev},
+\texttt{d\_bar\_n} &
+距離データの移動平均を計算し，
+正規化距離を更新する． \\
+\hline
+\texttt{void predictNextBeat()} &
+未定 &
+\texttt{tPredictBeat} &
+赤外線センサの動きから
+次回拍時刻を予測する． \\
+\hline
+\texttt{void updateTempoByPhoto()} &
+\texttt{t\_beat},
+\texttt{t\_prev},
+\texttt{T\_n},
+\texttt{state} &
+\texttt{T\_n},
+\texttt{t\_prev},
+\texttt{t\_next},
+\texttt{isTempoChanged} &
+フォトトランジスタ検出結果をもとに
+EMA によりテンポ推定を更新する． \\
+\hline
+\texttt{void updateTempoByIR()} &
+\texttt{t\_next},
+\texttt{tPredictBeat},
+\texttt{T\_n},
+\texttt{state} &
+\texttt{T\_n},
+\texttt{t\_next},
+\texttt{isTempoChanged} &
+赤外線センサによる拍予測値から
+テンポ変化を判定する． \\
+\hline
+\texttt{bool detectFermata()} &
+\texttt{t\_next},
+\texttt{T\_n},
+\texttt{d\_bar\_n},
+\texttt{d\_bar\_prev} &
+\texttt{staticCount},
+戻り値 &
+静止状態と時間超過条件から
+フェルマータ状態を判定する． \\
+\hline
+\texttt{void updateState()} &
+\texttt{state},
+各種判定結果 &
+\texttt{state},
+各種状態変数 &
+状態機械に基づいて
+状態遷移を管理する． \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{処理フローの設計}
 
-\figspace[4]{処理フロー図を挿入}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{figures/flowchart_photoISR.pdf}
+  \caption{photoISR}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{figures/flowchart_readIR.pdf}
+  \caption{readIR}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{figures/flowchart_calibrate.pdf}
+  \caption{calibrate}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{figures/flowchart_updateDBar.pdf}
+  \caption{updateDBar}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{figures/flowchart_updateTempoByPhoto.pdf}
+  \caption{updateTempoByPhoto}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{figures/flowchart_updateTempoByIR.pdf}
+  \caption{updateTempoByIR}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{figures/flowchart_detectFermata.pdf}
+  \caption{detectFermata}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{figures/flowchart_updateState.pdf}
+  \caption{updateState}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\linewidth]{figures/flowchart_loop.pdf}
+  \caption{loop}
+\end{figure}
 
 \subsection{テストの設計}
-どのようにテストを行うのか，例えば，テストデータの設計などを記述．
+
+担当Bが実施すべきテストの一覧を表\ref{tab:test}に示す．
+
+\begin{table}[H]
+\centering
+\caption{テスト一覧}
+\label{tab:test}
+\begin{tabular}{p{3.5cm}p{5cm}p{4cm}}
+\hline
+\textbf{テスト名} & \textbf{内容} & \textbf{合格基準} \\
+\hline
+測距センサキャリブレーション確認 &
+既知距離で $d_{\text{norm}}$ が0〜100\%の範囲に正規化されるか確認する． &
+正規化誤差 $\pm$5\%以内 \\
+\hline
+センサ融合精度確認 &
+メトロノーム（80bpm，104bpm）に合わせて指揮動作を行い，推定BPMを計測する． &
+BPM誤差 $\pm$5bpm以内 \\
+\hline
+EMAテンポ推定精度単体テスト &
+既知BPMシーケンスをシリアル入力でシミュレートし，$T_n$の収束を確認する． &
+3拍以内にBPM誤差 $\pm$5\%に収束 \\
+\hline
+状態機械遷移単体テスト &
+全6状態の遷移シーケンスをシリアルモニタでトレースする． &
+設計通りの遷移のみ発生，無効遷移なし \\
+\hline
+フェルマータ検出単体テスト &
+腕停止→FERMATA遷移→腕再開→PLAYING復帰をシリアルで確認する． &
+停止後2s以内に検出，誤検出なし \\
+\hline
+B-C間遅延測定（結合） &
+拍検出タイムスタンプとNOTE\_ON送信タイムスタンプの差をシリアルで計測する． &
+遅延 $\leq$50ms \\
+\hline
+A-B間テンポ追従確認（結合） &
+人形BPMを80→104に変化させ，担当BのEMAが追従するか確認する． &
+3小節以内に新テンポに収束 \\
+\hline
+\end{tabular}
+\end{table}
