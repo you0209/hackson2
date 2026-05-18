@@ -2,7 +2,7 @@
 \section{プロジェクトの概要}
 
 \subsection{プロジェクトの題目}
-（ここに記載）
+指揮者人形による自律同期Arduinoオーケストラ
 
 \subsection{プロジェクトの目的}
 プロジェクトの目的と最終的なゴール，解決すべき課題を記述する．
@@ -51,26 +51,256 @@
 % =====================
 \section{検証と妥当性確認：V\&V計画}
 
+ハッカソン2テキスト§1.2.5に基づき，MOE → MOP → TPM の順で評価指標を定める．
+実運用では順序が逆転し，実装中に TPM を継続監視し，
+V\&V によって MOP を確認し，最終的に MOE で受入判定を行う．
+
 \subsection{プロジェクトの成果物に対する有効指標MOE}
-（ここに記載）
+
+MOE（Measure of Effectiveness：有効指標）は，
+ステークホルダ（審査員・聴衆）が成果物の合格・不合格を判定するための指標であり，
+受入テストの合否基準に相当する．
+本プロジェクトのMOEを表\ref{tab:moe}に示す．
+
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\linewidth}{clXl}
+    \toprule
+    No. & MOE & 内容 & 確認方法 \\
+    \midrule
+    MOE-1 & 演奏完走 &
+      「かえるのうた」5パート輪唱（テンポ変化・フェルマータ含む）を
+      最初から最後まで演奏できること &
+      実演で確認 \\
+    MOE-2 & 指揮追従 &
+      指揮者人形のテンポ変化・フェルマータに対して
+      演奏が連動していることが視聴覚的に確認できること &
+      審査員観察評価 \\
+    MOE-3 & 楽器音認識 &
+      各パートが意図した楽器（ピアノ・鉄琴・トランペット・
+      バス/スネア・ハイハット）の音として聴こえること &
+      審査員主観評価 \\
+    \bottomrule
+  \end{tabularx}
+  \caption{MOE一覧}
+  \label{tab:moe}
+\end{table}
+
+表\ref{tab:moe}に示すように，MOEはMOE-1（演奏完走）・MOE-2（指揮追従）・MOE-3（楽器音認識）の3項目からなる．
+MOE-1は本システムの最低限の動作要件であり，演奏が途中で止まることは致命的な失敗にあたるため設定した．
+MOE-2は本システムの独自性である「指揮者人形の観測による自律同期」が実際に機能しているかを
+聴衆・審査員が知覚できることを確認するために設定した．
+MOE-3はProcessingによる音響合成の品質を評価するために設定した．
 
 \subsection{有効指標MOEに対応する性能指標MOP}
-（ここに記載）
+
+MOP（Measure of Performance：性能指標）はMOEを達成するために必要な
+システム性能を定量的に示す指標であり，V字モデルの設計段階で定義する．
+FBSの各機能に対応する性能要素に対して設定したMOPと，
+対応するMOEを表\ref{tab:moe-mop}に示す．
+
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\linewidth}{clX}
+    \toprule
+    No. & 対応MOE & MOP \\
+    \midrule
+    1 & MOE-1,2 & フォトトランジスタによる拍検出成功率 \\
+    2 & MOE-1,2 & 楽器間の発音タイミング誤差 \\
+    3 & MOE-1,2 & テンポ変化後のEMA収束拍数 \\
+    4 & MOE-1,2 & 腕停止からフェルマータ状態移行までの拍数 \\
+    5 & MOE-3   & 各パートの発音周波数精度 \\
+    \bottomrule
+  \end{tabularx}
+  \caption{MOEとMOPの対応}
+  \label{tab:moe-mop}
+\end{table}
+
+表\ref{tab:moe-mop}に示すMOPはそれぞれMOE-1・MOE-2の達成に関わる技術的な性能要素であり，
+各テストフェーズにおいて数値目標として評価する．
+具体的な目標値はシステムテスト・結合テスト・単体テストの各節で示す．
 
 \subsection{システムテストで評価する性能指標MOP}
-（ここに記載）
+
+システム全体を統合した状態で評価するMOPを表\ref{tab:mop-sys}に示す．
+
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\linewidth}{llX}
+    \toprule
+    No. & 対応FBS機能 & MOP（目標値） \\
+    \midrule
+    SYS-1 & テンポ推定 &
+      テンポ変化後の収束：$\leq 3$拍 \\
+    SYS-2 & フェルマータ検出 &
+      腕停止からフェルマータ移行：$\leq 1$拍 \\
+    SYS-3 & 楽譜進行制御 &
+      全区間通し演奏の完走率：$100\,\%$ \\
+    \bottomrule
+  \end{tabularx}
+  \caption{システムテストで評価するMOP}
+  \label{tab:mop-sys}
+\end{table}
+
+表\ref{tab:mop-sys}に示す各MOPの目標値の設定根拠を以下に示す．
+
+SYS-1の目標値3拍の根拠を示す．
+EMAの更新式は$T_n = \alpha \cdot \Delta t_n + (1-\alpha)\cdot T_{n-1}$であり，
+テンポ変化後の残差は$(1-\alpha)^n$で減衰する．
+テンポ変化を検出した際の平滑化係数$\alpha=0.5$を用いると，
+$n$拍後の残差は$(1-0.5)^n = 0.5^n$となる．
+$n=3$のとき$0.5^3 = 0.125$であり，初期誤差の87.5\%が3拍以内に除去される．
+この87.5\%収束をシステムとして許容できる収束の目安とし，$\leq 3$拍を目標値とした．
+
+SYS-2の目標値1拍は，フェルマータ検出が1拍分遅れると余分な音符が発音されてしまうため，
+楽譜上の影響が生じない上限として設定した．
+
+SYS-3の100\%はMOE-1（演奏完走）に直結するため，妥協のない値として設定した．
 
 \subsection{結合テストで評価する性能指標MOP}
-（ここに記載）
+
+複数の担当成果物を結合した状態で評価するMOPを表\ref{tab:mop-int}に示す．
+
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\linewidth}{llX}
+    \toprule
+    No. & 対応FBS機能 & MOP（目標値） \\
+    \midrule
+    INT-1 & テンポ追従演奏 &
+      楽器間発音タイミング誤差：$\leq \pm 20\,\mathrm{ms}$ \\
+    INT-2 & テンポ追従演奏 &
+      Arduino→Processing転送遅延：$\leq 50\,\mathrm{ms}$ \\
+    INT-3 & 輪唱オフセット制御 &
+      輪唱オフセット誤差：$\leq \pm 1$拍 \\
+    \bottomrule
+  \end{tabularx}
+  \caption{結合テストで評価するMOP}
+  \label{tab:mop-int}
+\end{table}
+
+表\ref{tab:mop-int}に示す各MOPの設定根拠を以下に示す．
+INT-1の目標値$\pm 20\,\mathrm{ms}$は，人間が音楽的なタイミングのズレを知覚できる
+閾値（先行研究では概ね$20\sim30\,\mathrm{ms}$\cite{sudo2007,kawase}）の下限値を採用した．
+INT-2の目標値$50\,\mathrm{ms}$の根拠を示す．
+115200\,bpsのシリアル通信では，スタート・データ8bit・ストップビットを含む1バイト=10bitを送信する．
+3バイトパケットの純粋な転送時間は$\frac{3 \times 10}{115200} \approx 0.26\,\mathrm{ms}$である．
+これにProcessing側のバッファ読み取り間隔（典型10\,ms未満）を加えても実測値は数ms程度であり，
+$50\,\mathrm{ms}$は十分な余裕を持った上限値である．
+また，各楽器ユニットで遅延が一定であれば遅延補正値で吸収できるため，絶対値よりも安定性が重要である．
+
+INT-3の目標値$\pm 1$拍は，輪唱の構造上1拍以上オフセットがずれると
+旋律が崩れて輪唱として成立しなくなるため，この値を上限として設定した．
 
 \subsection{単体テストで評価する性能指標MOP}
-（ここに記載）
+
+各担当成果物を単独で評価する単体テストのMOPを表\ref{tab:mop-unit}に示す．
+
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\linewidth}{lX}
+    \toprule
+    No. & MOP（目標値） \\
+    \midrule
+    UNIT-1 & 拍検出成功率：$\geq 95\,\%$ \\
+    UNIT-2 & 距離計算誤差：$\leq \pm 3\,\mathrm{cm}$ \\
+    UNIT-3 & EMA通常演奏時（$\alpha=0.2$）の収束：$\leq 13$拍 \\
+    UNIT-4 & NOTE\_ON送信タイミング誤差：$\leq \pm 10\,\mathrm{ms}$ \\
+    UNIT-5 & 発音周波数精度：目標周波数の$\pm 1\,\mathrm{Hz}$以内 \\
+    UNIT-6 & BPM追従誤差：$\leq \pm 5\,\mathrm{bpm}$ \\
+    UNIT-7 & ストローク変動：$\leq \pm 2\,\mathrm{mm}$ \\
+    \bottomrule
+  \end{tabularx}
+  \caption{単体テストで評価するMOP}
+  \label{tab:mop-unit}
+\end{table}
+
+表\ref{tab:mop-unit}に示す各MOPの設定根拠を以下に示す．
+
+UNIT-1の目標値95\%の根拠を示す．
+検出失敗率を$p = 1 - 0.95 = 0.05$とすると，3拍連続で失敗する確率は
+$p^3 = 0.05^3 = 1.25 \times 10^{-4}$（約0.013\%）である．
+フォールバック処理は3拍連続未検出で発動するため，
+検出成功率95\%を維持すればフォールバックがほぼ発動しないことが保証される．
+
+UNIT-2の目標値$\pm 3\,\mathrm{cm}$の根拠を示す．
+フェルマータ検出は絶対距離ではなく腕の「変化量」$\Delta d$で判定するため，
+絶対距離の精度要件は緩やかである．
+センサー出力電圧$V$から距離$d$を推定する近似式$d = 27.728 \times V^{-1.2045}$において，
+ArduinoのAD変換（10bit，5\,V系）の量子化誤差$\Delta V \approx 5/1024 \approx 4.9\,\mathrm{mV}$を伝搬させると，
+$d \approx 30\,\mathrm{cm}$付近での距離誤差は数mm〜数cm程度となる．
+この誤差範囲を包含する上限として$\pm 3\,\mathrm{cm}$を設定した．
+
+UNIT-3の目標値13拍の根拠を示す．
+$\alpha=0.2$のEMAが95\%収束（残差$\leq 5\%$）するのに必要な拍数は，
+$(1-\alpha)^n \leq 0.05$を解いて
+$n \geq \frac{\ln 0.05}{\ln(1-\alpha)} = \frac{\ln 0.05}{\ln 0.8} \approx 13.4$拍，
+切り上げで14拍となる．
+14拍以内に収束することを確認するため，余裕を1拍見て13拍を確認目標とした．
+
+UNIT-4の目標値$\pm 10\,\mathrm{ms}$の根拠を示す．
+楽器間タイミング誤差（INT-1：$\pm 20\,\mathrm{ms}$）は，
+各楽器の送信誤差が独立に重なった合計で生じる．
+最悪ケースで2つの楽器が逆方向に最大誤差を持つと，
+$(\pm 10) - (\pm 10) = \pm 20\,\mathrm{ms}$となる．
+よって，各楽器単体の誤差をINT-1の半分である$\pm 10\,\mathrm{ms}$以内に抑えることでINT-1を満たせる．
+
+UNIT-5の目標値$\pm 1\,\mathrm{Hz}$は，音楽的に許容されるピッチのずれ（約$\pm 5\,\mathrm{cent}$，
+A4=440\,Hzで約$\pm 1.3\,\mathrm{Hz}$\cite{jnd1974}）に対して余裕を持たせた値である．
+
+UNIT-6の目標値$\leq \pm 5\,\mathrm{bpm}$の根拠を示す．
+80\,bpmを基準テンポとすると，1拍の周期は$60/80 = 750\,\mathrm{ms}$である．
+人間がテンポ変化を知覚できる閾値は一般に約3〜6\%とされており，
+80\,bpmの6\%は$80 \times 0.06 = 4.8\,\mathrm{bpm}$である．
+この値を切り上げた$\pm 5\,\mathrm{bpm}$を，聴衆が追従と判断できる上限として設定した．
+
+UNIT-7の目標値$\leq \pm 2\,\mathrm{mm}$は24G1101の合格基準として設定された値を採用した．
 
 \subsection{プロジェクト中に監視する技術性能指標TPM}
-（ここに記載）
+
+TPM（Technical Performance Measure：技術性能指標）は，開発・実装中に
+継続的に測定・報告する定量的指標であり，技術的リスクの早期発見を目的とする．
+MOPのうち特にシステム完成時の性能に大きく影響し，
+実装の早い段階から測定できる項目を選定した．
+TPM一覧を表\ref{tab:tpm}に示す．
+
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\linewidth}{lX}
+    \toprule
+    No. & TPM（監視値・許容範囲） \\
+    \midrule
+    TPM-1 & 距離計算誤差：$\leq \pm 3\,\mathrm{cm}$ \\
+    TPM-2 & 拍検出成功率：$\geq 95\,\%$ \\
+    TPM-3 & Arduino→Processing転送遅延：$\leq 50\,\mathrm{ms}$ \\
+    TPM-4 & EMA（$\alpha=0.2$）テンポ収束拍数：$\leq 13$拍 \\
+    TPM-5 & 指揮者人形が追従できる最大BPM：$\geq 104\,\mathrm{bpm}$ \\
+    \bottomrule
+  \end{tabularx}
+  \caption{TPM一覧}
+  \label{tab:tpm}
+\end{table}
 
 \subsection{プロジェクト中に監視する指標TPM}
-（ここに記載）
+
+表\ref{tab:tpm-monitor}に，各TPMの監視頻度・監視方法・担当を示す．
+
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\linewidth}{lX}
+    \toprule
+    TPM & 監視方法 \\
+    \midrule
+    TPM-1 & 既知距離での実測値と近似式の計算値を比較し誤差を記録する \\
+    TPM-2 & メトロノームに合わせた指揮動作でフォトTrの検出率をシリアルモニタで計測する \\
+    TPM-3 & Arduino側の送信タイムスタンプとProcessing側の受信タイムスタンプの差分を計測・記録する \\
+    TPM-4 & 既知BPMのシミュレーションデータを入力してEMAの収束拍数を計測する \\
+    TPM-5 & 指定BPMで指揮者人形を動作させ，脱調・遅延の有無をシリアルモニタで確認する \\
+    \bottomrule
+  \end{tabularx}
+  \caption{TPM監視体制}
+  \label{tab:tpm-monitor}
+\end{table}
 
 % =====================
 \section{資源・調達管理}
