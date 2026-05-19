@@ -2,28 +2,184 @@
 \section{担当A — 指揮者人形・センサ機構}
 
 \subsection{部品一覧}
-（ここに記載）
+本システムの構築にあたって，使用を想定している主要部品を以下の表\ref{tantoA:parts}に示す．
+
+\begin{table}[h]
+    \caption{部品一覧}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{lll}
+        \hline
+        部品名 & 型番・仕様 & 備考\\\hline
+        マイクロコントローラ & Arduino Uno R4 WiFi & システム全体の制御を担当\\
+        サーボモータ & SG92R & 負荷に応じて金属製ギアのものに変更\\
+        反射板（腕） & プラスチックなど & 軽量かつ赤外線を反射しやすい素材を選定\\
+        指揮用LED & 高輝度単色LED（赤または白） & 子機センサが検知しやすいものを選定\\
+        状態表示用LCD & SSCI-014076 & BPMや状態を表示 \\\hline
+    \end{tabular}
+    }
+    \label{tantoA:parts}
+\end{table}
 
 \subsection{ハードウェア設計}
-（ここに記載）
+\subsubsection{ユニット構成}
+本ユニットにおける具体的な設計案を以下の図\ref{tantoA:conductor}に示す．
 
-\figspace[4]{回路図・機構図を挿入}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=10cm]{figures/blueprint.pdf}
+    \caption{指揮者人形ユニットの設計図}
+    \label{tantoA:conductor}
+\end{figure}
+
+本ユニットは，制御・処理を担うマイクロコントローラ（Arduino Uno R4 WiFi），腕の物理動作を行うサーボモータ，
+拍タイミングを光で提示する指揮用LED，演奏状態を表示するLCDディスプレイで構成される．\par
+
+なお，赤外線測距センサおよびフォトトランジスタは本ユニットには搭載しない．
+これらは各楽器ユニット（子機）側に搭載され，指揮者人形ユニット（親機）の腕（反射板）の位置変化および指揮用LEDの点灯を観測することで，
+通信に依存せず自律的に拍を同期する役割を担う．
+
+\subsubsection{ピン接続}
+Arduino Uno R4 WiFiと各デバイスのピン接続を以下の表\ref{tantoA:pins}に示す．
+
+\begin{table}[h]
+\caption{ピン接続一覧}
+\begin{tabular}{lll}
+    \hline
+    Arduinoピン & 接続先デバイス & 信号種別 \\\hline
+    D9（PWM） & サーボモータ & PWM出力 \\
+    D7 & 指揮用LEDアノード（330Ω経由） & デジタル出力 \\
+    SDA & LCD（SSCI-014076） & I$^2$C データ \\
+    SCL & LCD（SSCI-014076） & I$^2$C クロック \\
+    USB Type-C & PC（Processing） & シリアル通信（115200bps） \\
+    \hline
+\end{tabular}
+\label{tantoA:pins}
+\end{table}
+
+\subsubsection{回路設計}
+本ユニットにおける回路接続図を以下の図\ref{tantoA:circuit}に示す．
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=10cm]{figures/Unit_circuit.pdf}
+    \caption{回路接続図}
+    \label{tantoA:circuit}
+\end{figure}
 
 \subsection{ソフトウェア設計}
+\subsubsection{概要}
+本ユニットのソフトウェアは，Arduino Uno R4 WiFi上で動作するファームウェアと，PC乗で動作する制御アプリケーション（Processing）の2つで構成される．\par
 
-\subsubsection{ファイル構成}
-（ここに記載）
+ファームウェアは，演奏の状態管理・サーボモータの制御・LED点灯・LCD表示・シリアル通信受信を担う．
+状態管理には「待機」「予備拍」「演奏中」「フェルマータ」「演奏停止」の5つの状態を定義し，PCからのコマンド受信をトリガとして状態を遷移させる．
+拍のタイミング生成にはFspTimerによる割り込みを用い，メインループに依存しないマイクロ秒単位の精度でサーボモータとLEDを同期制御する．\par
 
-\subsubsection{オブジェクト設計（クラス図）}
+制御アプリケーション（Processing）は，ユーザのボタン操作に応じてSTART・STOP・FERMATAの各コマンドをシリアル通信（115200bps）経由でArduinoへ送信する役割を担う．
 
-\figspace[3]{クラス図を挿入}
+\subsubsection{シリアル通信プロトコル}
+PCからArduinoへ送信するコマンドの仕様を表\ref{tantoA:protocol}に示す．
+
+\begin{table}[H]
+\caption{シリアル通信コマンド仕様}
+\centering
+\begin{tabular}{lll}
+    \hline
+    コマンド文字列 & 意味 & 遷移先状態 \\\hline
+    \texttt{START} & 演奏開始 & 予備拍 → 演奏中 \\
+    \texttt{STOP}  & 演奏停止 & 停止動作 → 待機 \\
+    \texttt{FERMATA} & フェルマータ開始 & フェルマータ \\
+    \hline
+\end{tabular}
+\label{tantoA:protocol}
+\end{table}
 
 \subsubsection{関数設計}
-（ここに記載）
+Arduinoのファームウェアおよび制御アプリケーション（Processing）それぞれの関数一覧を以下の表\ref{tantoA:func_arduino}，表\ref{tantoA:func_processing}に示す．
+
+\begin{table}[H]
+\caption{Arduino側 関数一覧}
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llll}
+    \hline
+    関数名 & 引数 & 戻り値 & 役割 \\\hline
+    \texttt{setup()} & なし & なし & 各デバイスの初期化，タイマ割り込みの設定 \\
+    \texttt{loop()} & なし & なし & シリアル受信の監視，状態に応じた処理の呼び出し \\
+    \texttt{onBeatTimer()} & なし & なし & タイマ割り込み：サーボ角度更新・LED点灯を同期実行 \\
+    \texttt{updateServo()} & なし & なし & 現在の状態・拍位相に基づきサーボ角度を更新 \\
+    \texttt{updateLED()} & なし & なし & 拍の最前点でLEDを短時間点灯させる \\
+    \texttt{receiveCommand()} & なし & なし & シリアルバッファを読み取りコマンド文字列を返す \\
+    \texttt{changeState(State s)} & 遷移先状態 \texttt{s} & なし & 状態変数を更新し，遷移時の初期化処理を行う \\
+    \texttt{updateLCD()} & なし & なし & 現在の状態・BPMをLCDに表示する \\
+    \hline
+\end{tabular}
+}
+\label{tantoA:func_arduino}
+\end{table}
+
+\paragraph{制御アプリケーション（Processing）}
+
+\begin{table}[H]
+\caption{Processing側 関数一覧}
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llll}
+    \hline
+    関数名 & 引数 & 戻り値 & 役割 \\\hline
+    \texttt{setup()} & なし & なし & ウィンドウ・シリアルポートの初期化，UIボタンの配置 \\
+    \texttt{draw()} & なし & なし & UIの再描画（ボタン状態・接続状態の表示更新） \\
+    \texttt{mousePressed()} & なし & なし & クリック座標からボタンを判定し対応コマンドを送信 \\
+    \texttt{sendCommand(String cmd)} & 送信コマンド文字列 \texttt{cmd} & なし & シリアルポート経由でArduinoへコマンドを送信 \\
+    \texttt{drawButton(String label, int x, int y)} & ラベル，X座標，Y座標 & なし & 指定位置にボタンを描画する \\
+    \hline
+\end{tabular}
+}
+\label{tantoA:func_processing}
+\end{table}
 
 \subsection{処理フローの設計}
+メインループ処理およびタイマ割り込みの処理フロー図を以下の図\ref{tantoA:mainloop}，図\ref{tantoA:timer}に示す．
 
-\figspace[4]{処理フロー図を挿入}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=8cm]{figures/mainloop.pdf}
+    \caption{メインループ処理の処理フロー図}
+    \label{tantoA:mainloop}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=8cm]{figures/timer.pdf}
+    \caption{タイマ割り込みの処理フロー図}
+    \label{tantoA:timer}
+\end{figure}
 
 \subsection{テストの設計}
-どのようにテストを行うのか，例えば，テストデータの設計などを記述．
+本ユニットの動作検証におけるテスト方針、および具体的なテスト項目について記述する。
+
+\subsubsection{テスト方針}
+本ユニットはシステム全体の親機として機能し、正確なテンポ維持とPCからのコマンドに応じた柔軟な状態遷移が求められる。
+そのため、テストは「ハードウェア単体テスト」「ソフトウェア機能テスト」「システム統合テスト」の3段階に分けて実施し、段階的に信頼性を確保する。
+
+\subsubsection{テスト項目一覧}
+具体的なテスト項目、検証内容、およびテストデータを表\ref{tantoA:test_cases}に示す。
+
+\begin{table}[H]
+\caption{テスト項目一覧}
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llll}
+    \hline
+    カテゴリ & テスト項目名 & 検証内容 & テストデータ・条件 \\\hline
+    ハードウェア単体 & サーボモータ動作検証 & 指定した角度へ正確に追従し、腕（反射板）の負荷で脱調しないか & 動作角度：0\textdegree〜$\pm$30\textdegree \\
+    & 指揮用LED視認性検証 & LEDが十分な光量で点灯し、子機側センサで検知可能か & 点灯時間：最前点での短時間パルス点灯 \\
+    & LCD表示検証 & 動作状態やBPMが文字化けや遅延なく正しく表示されるか & 各状態の文字列、BPM：60〜140 \\\hline
+    ソフトウェア機能 & シリアル通信・状態遷移 & 各コマンド受信により、定義された5つの状態へ正しく遷移するか & \texttt{START}, \texttt{STOP}, \texttt{FERMATA}、および予備拍・待機状態 \\
+    & タイマ割り込み精度 & FspTimerによる割り込みがメインループに依存せず正確に作動するか & 各種BPM設定時における割り込み周期の計測 \\\hline
+    システム統合 & E2Eフロー検証 & ProcessingのUI操作からコマンド送信、物理動作まで一連のフローが機能するか & 各種ボタンのクリック操作（START $\rightarrow$ FERMATA $\rightarrow$ STOPなど） \\
+    & BPM境界値検証 & 高速・低速動作時にサーボの追従遅れやタイマの処理落ちがないか & 最小設定BPM、最大設定BPM \\
+    \hline
+\end{tabular}
+}
+\label{tantoA:test_cases}
+\end{table}
