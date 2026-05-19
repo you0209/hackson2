@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net">
+  <diagram name="FBS">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2339" pageHeight="1654" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+
+        <!-- 0層: ルート (center=955) -->
+        <mxCell id="F0" value="Arduinoオーケストラシステム" style="rounded=1;whiteSpace=wrap;html=1;fontStyle=1;fontSize=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="865" y="10" width="180" height="45" as="geometry"/></mxCell>
+
+        <!-- 1層: 主機能グループ (各グループ中心の真上に配置) -->
+        <mxCell id="F1a" value="指揮動作検出" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="205" y="110" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F1b" value="指揮者人形動作" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="615" y="110" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F1c" value="演奏制御" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="960" y="110" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F1d" value="音響合成" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="1370" y="110" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F1e" value="状態管理" style="rounded=0;whiteSpace=wrap;html=1;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="1715" y="110" width="120" height="40" as="geometry"/></mxCell>
+
+        <!-- 2層: 指揮動作検出 の子 (x=10〜520, center=265) -->
+        <mxCell id="F2a1" value="拍タイミング検出" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="10" y="215" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F2a3" value="テンポ推定" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="140" y="215" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F2a4" value="フェルマータ検出" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="270" y="215" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F2a5" value="小節同期・見逃し補完" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="400" y="215" width="120" height="40" as="geometry"/></mxCell>
+
+        <!-- 2層: 指揮者人形動作 の子 (x=550〜800, center=675) -->
+        <mxCell id="F2b1" value="腕往復動作" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="550" y="215" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F2b2" value="輝度エンコードLED制御" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="680" y="215" width="120" height="40" as="geometry"/></mxCell>
+
+        <!-- 2層: 演奏制御 の子 (x=830〜1210, center=1020) -->
+        <mxCell id="F2c1" value="輪唱オフセット&#xa;制御" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="830" y="215" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F2c2" value="楽譜進行制御" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="960" y="215" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F2c3" value="テンポ追従演奏" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="1090" y="215" width="120" height="40" as="geometry"/></mxCell>
+
+        <!-- 2層: 音響合成 の子 (x=1240〜1620, center=1430) -->
+        <mxCell id="F2d1" value="音色合成&#xa;（倍音・ADSR）" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="1240" y="215" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F2d2" value="エフェクト付与" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="1370" y="215" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F2d3" value="フェルマータ延奏" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="1500" y="215" width="120" height="40" as="geometry"/></mxCell>
+
+        <!-- 2層: 状態管理 の子 (x=1650〜1900, center=1775) -->
+        <mxCell id="F2e1" value="演奏状態遷移&#xa;管理" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="1650" y="215" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="F2e2" value="異常時&#xa;フォールバック" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="1780" y="215" width="120" height="40" as="geometry"/></mxCell>
+
+        <!-- エッジ: Root → L1 -->
+        <mxCell id="e0a" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F0" target="F1a" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e0b" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F0" target="F1b" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e0c" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F0" target="F1c" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e0d" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F0" target="F1d" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e0e" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F0" target="F1e" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- エッジ: F1a → L2 -->
+        <mxCell id="ea1" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1a" target="F2a1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ea3" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1a" target="F2a3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ea4" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1a" target="F2a4" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ea5" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1a" target="F2a5" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- エッジ: F1b → L2 -->
+        <mxCell id="eb1" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1b" target="F2b1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="eb2" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1b" target="F2b2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- エッジ: F1c → L2 -->
+        <mxCell id="ec1" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1c" target="F2c1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ec2" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1c" target="F2c2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ec3" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1c" target="F2c3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- エッジ: F1d → L2 -->
+        <mxCell id="ed1" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1d" target="F2d1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ed2" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1d" target="F2d2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ed3" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1d" target="F2d3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- エッジ: F1e → L2 -->
+        <mxCell id="ee1" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1e" target="F2e1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="ee2" style="html=1;endArrow=none;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="F1e" target="F2e2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

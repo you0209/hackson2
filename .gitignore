@@ -11,8 +11,9 @@
 *.bcf
 *.run.xml
 
-# PDF は各自でビルド（バイナリ競合を防ぐ）
-*.pdf
+# LaTeX コンパイル出力（バイナリ競合を防ぐ）
+management_plan.pdf
 
 # macOS
 .DS_Store
+~$*.xlsx

@@ -1,4 +1,4 @@
-\documentclass[lualatex,book,paper=a4paper,jafontsize=11.5pt,jafontscale=1.05]{jlreq}
+\documentclass[lualatex,book,paper=a4paper,jafontsize=11.5pt,jafontscale=1.05,oneside]{jlreq}
 
 % フォント
 \usepackage{luatexja-fontspec}
@@ -28,6 +28,11 @@
 
 % リスト
 \usepackage{enumitem}
+
+% フロートバリア
+\usepackage{placeins}
+
+
 
 \lstset{
   basicstyle=\ttfamily\small,
@@ -105,6 +110,16 @@
 % =============================================================
 % 参考文献
 \begin{thebibliography}{9}
+
+\bibitem{borchers2004personal}
+  Borchers, J., Lee, E., Samminger, W., \& M{\"u}hlh{\"a}user, M. (2004).
+  Personal orchestra: a real-time audio/video system for interactive conducting.
+  \textit{Multimedia Systems}, 9(5), 458--465.
+
+\bibitem{cont2008antescofo}
+  Cont, A. (2008).
+  ANTESCOFO: Anticipatory synchronization and control of interactive parameters in computer music.
+  In \textit{Proceedings of the International Computer Music Conference (ICMC)}, Belfast, Ireland.
 
 \bibitem{sudo2007}
   須藤宏明，他，
