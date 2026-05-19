@@ -8,7 +8,7 @@
 
 \begin{itemize}
     \item \textbf{テンポ提示機能}\\
-    腕（反射板）を一定周期で滑らかに往復運動させ，１往復を１拍としてオーケストラ全体の店舗を提示する．
+    腕（反射板）を一定周期で滑らかに往復運動させ，1往復を1拍としてオーケストラ全体の店舗を提示する．
 
     \item \textbf{拍の同期機能}\\
     腕が最前点に到達した瞬間に，反射板に搭載したLEDを短時間点灯させる．子機は「LEDの光」と「反射板までの距離の変動」の２つの物理的変化を観測することで，通信に頼らず性格に拍を同期する．
@@ -22,35 +22,35 @@
 
 \subsection{システム構成図}
 本システムは，ユーザが操作するPC側の制御アプリケーション（Processing），制御と状態管理を担うマイクロコントローラ（Arduino Uno R4 WiFi），および動作と状態提示を行う各出力デバイスによって構成される．
-PCからの制御コマンド受信，FspTimerを用いた割り込み処理，およびマイクロ秒単位でのデバイス同期のフローを含む，システム全体の構成図を以下の図\ref{system}に示す．
+PCからの制御コマンド受信，FspTimerを用いた割り込み処理，およびマイクロ秒単位でのデバイス同期のフローを含む，システム全体の構成図を以下の図\ref{tantoA:system}に示す．
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=8cm]{figures/configuration.pdf}
     \caption{システム構成図}
-    \label{system}
+    \label{tantoA:system}
 \end{figure}
 
 \subsection{操作インターフェース設計}
 本システムでは，信号入力用の制御アプリケーション（Processingを用いて構築）を介して指揮者人形ユニットの操作を行う．
-ユーザインターフェースには，図\ref{user}に示すように「START」「STOP」「FERMATA」の各制御ボタンを配置する．
+ユーザインターフェースには，図\ref{tantoA:user}に示すように「START」「STOP」「FERMATA」の各制御ボタンを配置する．
 ユーザがPC上でこれらのボタンをクリックすることで，USB Type-Cを用いた石リアル通信を介して，対応する信号がArduinoへ送信される．
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=5cm]{figures/UI_image.png}
+    \includegraphics[width=5cm]{figures/UI_image.pdf}
     \caption{ユーザーインターフェース表示案}
-    \label{user}
+    \label{tantoA:user}
 \end{figure}
 
 \subsection{状態遷移図}
-本システムにおける状態遷移図を以下の図\ref{flowchart}に示す.
+本システムにおける状態遷移図を以下の図\ref{tantoA:flowchart}に示す.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=8cm]{figures/conductor.pdf}
     \caption{指揮者人形ユニットにおける状態遷移図}
-    \label{flowchart}
+    \label{tantoA:flowchart}
 \end{figure}
 
 
