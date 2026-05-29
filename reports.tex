@@ -1,0 +1,87 @@
+% =============================================================
+% 課題4〜9 統合提出文書
+%
+% 含む章:
+%   第1章 人員ごとの作業時間統計 (課題4)
+%   第2章 WBS要素ごとの作業時間統計 (課題5)
+%   第3章 作業の進捗率: WBSとガントチャート (課題6)
+%   第4章 技術成熟度レベルTRLの推移 (課題7)
+%   第5章 技術性能指標TPMの推移 (課題8)
+%   第6章 テストの実施日と結果 (課題9)
+%
+% 各章の本体は <folder>/<folder_name>.tex に分離されており，
+% 親文書（本ファイル）からは \input で読み込んでいる．
+%
+% ビルド方法:
+%   lualatex reports.tex
+% =============================================================
+\documentclass[lualatex,book,paper=a4paper,jafontsize=11.5pt,jafontscale=1.05]{jlreq}
+
+% フォント
+\usepackage{luatexja-fontspec}
+\usepackage{hack-fonts}
+
+% 表紙
+\usepackage{hack-cover}
+
+% リンク
+\usepackage[hidelinks]{hyperref}
+
+% 画像
+\usepackage{graphicx}
+
+% 表
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{float}
+
+% =============================================================
+\title{Arduinoオーケストラ}
+\subtitle{〜作業ログ・進捗・テスト結果〜}
+\team{グループ32}
+\author{
+  25G1033 : 長見 東磨\\
+  25G1098 : 長野 志哉\\
+  25G1099 : 長山 魁良\\
+  25G1094 : 中村 海惺\\
+  \mbox{} : 飛田\\
+  \mbox{} : 慶田\\
+  \mbox{} : 尾添
+}
+\date{\today}
+\version{1.0}
+
+% =============================================================
+\begin{document}
+\maketitle
+
+\setcounter{tocdepth}{1}
+\tableofcontents \thispagestyle{empty}
+
+% =============================================================
+\chapter{人員ごとの作業時間統計}\setcounter{page}{1}
+\input{work_hours_member/work_hours_member}
+
+% =============================================================
+\chapter{WBS要素ごとの作業時間統計}
+\input{work_hours_wbs/work_hours_wbs}
+
+% =============================================================
+\chapter{作業の進捗率（WBS・ガントチャート）}
+\input{progress/progress}
+
+% =============================================================
+\chapter{技術成熟度レベルTRLの推移}
+\input{trl_history/trl_history}
+
+% =============================================================
+\chapter{技術性能指標TPMの推移}
+\input{tpm_history/tpm_history}
+
+% =============================================================
+\chapter{テストの実施日と結果}
+\input{test_results/test_results}
+
+\end{document}
