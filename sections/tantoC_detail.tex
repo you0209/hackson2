@@ -12,7 +12,7 @@
 \hline
 品目 & 数量 & 用途 \\\hline \hline
 Arduino Uno R4 Wifi（子機用） & 5 & 楽器ユニット各1台 \\ \hline
-USB Type-Cケーブル & 5 & 各子機とPC缶のSerial通信 \\ \hline
+USB Type-Cケーブル & 5 & 各子機とPC間のSerial通信 \\ \hline
 シリアル通信テスト環境（Arduino IDE シリアルモニタ）& - & C1テスト（B-C間遅延測定） \\ \hline
   \end{tabular}  
 \end{table}
@@ -29,7 +29,7 @@ USB Type-Cケーブル & 5 & 各子機とPC缶のSerial通信 \\ \hline
 \subsubsection{楽譜データ構造}
 本システムで実装する楽譜データ構造は音名インデックス，音の強さ，拍数の3要素を持つ二次元配列として定義する．音名インデックスの定義一覧は以下の通りである．\\
 
-音名インデックス：$C4=0，D4=1，E4=2，F4=3，G4=4，A4=5（休符：255）$\\
+音名インデックス：$C4=0，D4=1，E4=2，F4=3，G4=4，A4=5（休符：6）$\\
 
 定義例はソースコード\ref{index}の通りである．各パートの最後は休符を設定する．
 
@@ -49,7 +49,7 @@ const uint8_t score[][3] = {
    {1, 100, 1},   //レ
    {2, 100, 1},   //ミ
    {3, 100, 1},   //ファ
-   // ... 以下省略（前章節分を定義）
+   // ... 以下省略（全章節分を定義）
    };
    
    const int SCORE_LEN = sizeof ( score ) / sizeof ( score [0] ) ;
@@ -58,7 +58,7 @@ const uint8_t score[][3] = {
 \end{figure}
 
 \subsubsection{輪唱・テンポ管理用の定数}
-各楽器のオフセット一覧は表\ref{offset02}の通りである．なお，最終値は試聴によって調整を行う．
+各楽器の演奏開始は親機からの輝度キューによって決定される．子機は自機 ID に対応する輝度レベルを検出した時点でスタートフラグを立て，次の拍タイミングで演奏を開始する．演奏予定順序を参考として表 \ref{offset02} に示す．
 \begin{table}[H]
   \centering
   \caption{オフセット一覧表}
@@ -74,26 +74,6 @@ const uint8_t score[][3] = {
   \end{tabular}  
 \end{table}
 \FloatBarrier
-
-小節管理に使用する定数はソースコード\ref{beat}の通りである．
-\begin{figure}[H]
-\renewcommand{\lstlistingname}{ソースコード}
-    \begin{lstlisting}[
-        language=C++,
-        caption={小節管理の定数},
-        label=beat,
-        escapechar=@,
-        frame=single,
-        basicstyle=\ttfamily\small,
-        breaklines=true
-    ]
-    
-    const uint8_t BAR_OFFSET = 0;  //開始小節オフセット
-    
-    const uint8_t BEATS_PER_BAR = 4;  //小節あたりの拍数
-    
-   \end{lstlisting}
-\end{figure}
 
 演奏テンポ一覧は表\ref{temp}の通りである．
 
@@ -111,33 +91,6 @@ const uint8_t score[][3] = {
 \end{table}
 \FloatBarrier
 
-テンポ管理は小節カウンタ（ソースコード\ref{beat}）による自立管理を行う．定義例はソースコード\ref{テンポ切替}の通りである．
-\begin{figure}[H]
-\renewcommand{\lstlistingname}{ソースコード}
-    \begin{lstlisting}[
-        language=C++,
-        caption={テンポ切替定数},
-        label=テンポ切替,
-        escapechar=@,
-        frame=single,
-        basicstyle=\ttfamily\small,
-        breaklines=true
-    ]
-    
-    const uint16_t TEMPO_SLOW = 750;  //80bpm->拍間隔750ms
-    
-    const uint16_t TEMPO_FAST = 577;  //104bpm->拍間隔577ms
-    
-    const uint8_t TEMPO_CHANGE_BAR = 15;  //15小節目からTEMPO_FASTへ切替
-    
-    uint16_t currentInterval = TEMPO_SHOW;  //現在の拍間隔[ms]
-    uint8_t barCount = 0;  //現在の小説カウンタ
-    
-   \end{lstlisting}
-\end{figure}
-
-
-
 
 \subsubsection{オブジェクト設計（クラス図）}
 
@@ -150,10 +103,13 @@ const uint8_t score[][3] = {
 \hline
 型 & 変数名 & 用途 \\\hline \hline
 int & noteIndex = 0 & 現在の音符ポインタ \\ \hline
-int & beatCount = 0 & 経過拍数（オフセット待機カウント） \\ \hline
-int & remainBeats = 0 & 現在の音符の残り拍数 \\ \hline
-bool & playing = false & 演奏開始フラグ（オフセット待機終了後に"true") \\ \hline
-bool & fermata = false & フェルマータ中フラグ \\ \hline
+unsigned long & t\_next = 0 & 次の拍の予測絶対時間 \\ \hline
+uint8\_t & sendTime & シリアル通信を行う時間 \\ \hline
+bool & bool beatUpdated = false & 拍予測の更新（更新時true） \\ \hline
+uint8\_t\ & note\_off = 1 & 前の音の終了 \\ \hline
+uint8\_t\ & note = 0 & 音名インデックス \\ \hline
+uint8\_t\ & vel= 0 & 音の強さ（0〜127） \\ \hline
+uint8\_t\ & long= 0 & 音の長さ（0〜127） \\ \hline
   \end{tabular}  
 \end{table}
 
@@ -177,12 +133,11 @@ bool & fermata = false & フェルマータ中フラグ \\ \hline
     \hline
     関数名 & 引数 & 戻り値 & 処理内容 \\ \hline \hline
  %   bool detectBeat() & なし（void）&bool（ true / false )& フォトトランジスタで親機LEDを検出しtrueを返す．そうでない場合はfalseを返す． \\ \hline
-    void onBeatDetected() & なし（void）& なし（void）& 拍検出時の処理：オフセット待機，テンポ切替，音符更新・送信，前の音の停止の送信を実行 \\ \hline
+    void onBeatDetected() & なし（void）& なし（void）& 拍検出時の処理：音符更新・送信，前の音の停止の送信を実行 \\ \hline
     void advanceNote() & なし（void）& なし（void）& 残り拍数を減らし，0になったらnoteIndexを進める \\ \hline
     void sendCurrentNote() & なし（void）& なし（void）& score[noteIndex] からNOTE ON パケットを生成し送信する \\ \hline
     void sendNoteOn(uint8\_t note, uint8\_t vel) &uint8\_ note：音名インデックス（0~127　休符=255）　uint8\_vel：音の強さ（0~127）& なし（void）& 演奏用ArduinoからProcessingへシリアル送信する \\ \hline
     void onFermata() & なし（void）& なし（void）& フェルマータ受信時，次の拍を検出するまでプログラムを停止する \\ \hline
-    void checkTempoChange() & なし（void）& なし（void）& barCountに応じてcurrentIntervalを切り替える \\ \hline
   \end{tabularx}  
 \end{table}
 
