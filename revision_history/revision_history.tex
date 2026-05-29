@@ -1,0 +1,44 @@
+% =============================================================
+% 課題3「変更履歴の記述」用 独立文書
+%
+% この文書は，マネジメント計画書・基本設計書・詳細設計書に対する
+% 変更履歴のみを記載した独立PDFを生成するためのものである．
+% 履歴の本体は ../revision_history/sections/changelog.tex に置かれており，
+% management_plan.tex 側の \chapter{変更履歴} と共通ファイルを参照することで
+% 一元管理されている．
+%
+% ビルド方法（このフォルダ内で実行）:
+%   cd revision_history
+%   lualatex revision_history.tex
+% =============================================================
+\documentclass[lualatex,a4paper,jafontsize=11pt,jafontscale=1.05]{jlreq}
+
+% フォント
+\usepackage{luatexja-fontspec}
+
+% リンク
+\usepackage[hidelinks]{hyperref}
+
+% 表
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{float}
+
+\title{Arduinoオーケストラ \\ 〜変更履歴〜}
+\author{グループ32}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{はじめに}
+本文書には，Arduinoオーケストラ開発における
+マネジメント計画書・基本設計書・詳細設計書に対する全ての変更履歴を記録する．
+追記は表の末尾に対して時系列順に行う．
+
+\section*{変更履歴一覧}
+\input{sections/changelog}
+
+\end{document}

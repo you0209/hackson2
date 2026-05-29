@@ -1,0 +1,32 @@
+% 全期間累積の変更履歴（課題3 用）
+% revision_history/revision_history.tex から \input される．
+%
+% ライフサイクル:
+%   - 提出のタイミングで，sections/changelog_current.tex の履歴行を
+%     このファイルの末尾（\endhead と \bottomrule の間）にコピーする
+%   - このファイルは「リセットしない」．全期間の履歴がここに蓄積される
+%
+% 書式:
+%   YYYY-MM-DD & 学籍番号 : 氏名 & 対象（章・節） & 変更内容 \\
+%
+% 前提パッケージ（呼び出し側でロード済みであること）:
+%   \usepackage{longtable}
+%   \usepackage{booktabs}
+%   \usepackage{array}
+
+\begin{longtable}{p{2.2cm}p{3.5cm}p{4cm}p{5.5cm}}
+\toprule
+日付 & 担当 & 対象（章・節） & 変更内容 \\
+\midrule
+\endfirsthead
+
+\toprule
+日付 & 担当 & 対象（章・節） & 変更内容 \\
+\midrule
+\endhead
+
+% --- 全期間の履歴行（提出時に changelog_current.tex から追記される） ---
+
+\bottomrule
+\endfoot
+\end{longtable}
