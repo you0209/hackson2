@@ -1,0 +1,55 @@
+% =============================================================
+% 第5章 技術性能指標TPMの推移 (課題8) 章本体
+% reports.tex から \input される．
+% =============================================================
+
+\section{はじめに}
+本章には，Arduinoオーケストラ開発における技術性能指標（TPM: Technical Performance Measure）の測定推移を記録する．
+TPM項目の定義はマネジメント計画書（\texttt{management\_plan.tex}）の表「TPM一覧」を参照．
+
+\section{TPM項目（参考）}
+
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\linewidth}{lX}
+    \toprule
+    No. & TPM（監視値・許容範囲） \\
+    \midrule
+    TPM-1 & 距離計算誤差：$\leq \pm 3\,\mathrm{cm}$ \\
+    TPM-2 & 拍検出成功率：$\geq 95\,\%$ \\
+    TPM-3 & Arduino→Processing転送遅延：$\leq 50\,\mathrm{ms}$ \\
+    TPM-4 & EMA（$\alpha=0.2$）テンポ収束拍数：$\leq 13$拍 \\
+    TPM-5 & 指揮者人形が追従できる最大BPM：$\geq 104\,\mathrm{bpm}$ \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{TPM測定推移}
+
+\begin{longtable}{p{2cm}p{1.5cm}p{2.5cm}p{2.5cm}p{1.5cm}p{4cm}}
+\toprule
+測定日 & TPM & 目標値 & 実測値 & 達否 & 備考 \\
+\midrule
+\endfirsthead
+
+\toprule
+測定日 & TPM & 目標値 & 実測値 & 達否 & 備考 \\
+\midrule
+\endhead
+
+% --- 各TPMの測定推移を記載 ---
+% 書式: YYYY-MM-DD & TPM-X & 目標値 & 実測値 & ○/× & 備考 \\
+
+\bottomrule
+\endfoot
+\end{longtable}
+
+\section{TPM推移グラフ（任意）}
+
+% TPMごとの推移を折れ線グラフで可視化する場合は tpm_history/figures/ に画像を配置．
+%
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[width=0.8\linewidth]{tpm_history/figures/tpm_chart.pdf}
+%   \caption{TPM推移グラフ}
+% \end{figure}

@@ -1,0 +1,32 @@
+% 直近の変更履歴（課題1・課題2 用）
+% management_plan.tex の \chapter{変更履歴} から \input される．
+%
+% ライフサイクル:
+%   - 変更があったら，このファイルに行を追記する（書式は下記）
+%   - 提出のタイミングで，下記の履歴行を revision_history/sections/changelog.tex
+%     （累積版・課題3用）の末尾にコピーしてから，このファイルの履歴行を全て削除する
+%
+% 書式:
+%   YYYY-MM-DD & 学籍番号 : 氏名 & 対象（章・節） & 変更内容 \\
+%
+% 前提パッケージ（呼び出し側でロード済みであること）:
+%   \usepackage{longtable}
+%   \usepackage{booktabs}
+%   \usepackage{array}
+
+\begin{longtable}{p{2.2cm}p{3.5cm}p{4cm}p{5.5cm}}
+\toprule
+日付 & 担当 & 対象（章・節） & 変更内容 \\
+\midrule
+\endfirsthead
+
+\toprule
+日付 & 担当 & 対象（章・節） & 変更内容 \\
+\midrule
+\endhead
+
+% --- 履歴行をここに追記していく（提出時にクリア） ---
+
+\bottomrule
+\endfoot
+\end{longtable}
