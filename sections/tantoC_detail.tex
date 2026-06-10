@@ -57,11 +57,11 @@ const uint8_t score[][3] = {
    \end{lstlisting}
 \end{figure}
 
-\subsubsection{輪唱・テンポ管理用の定数}
-各楽器のオフセット一覧は表\ref{offset02}の通りである．なお，最終値は試聴によって調整を行う．
+\subsubsection{テンポ管理・演奏制御用の定数}
+各楽器の演奏開始は親機からの輝度キューによって決定される．子機は自機IDに対応する輝度レベルを検出した時点でスタートフラグを立て，次の拍タイミングで演奏を開始する．演奏予定順序を参考として表\ref{offset02}に示す．
 \begin{table}[H]
   \centering
-  \caption{オフセット一覧表}
+  \caption{演奏予定順序（親機から動的に指示）}
   \label{offset02}
   \begin{tabular}{|c|c|c|}
 \hline
@@ -87,8 +87,6 @@ const uint8_t score[][3] = {
         basicstyle=\ttfamily\small,
         breaklines=true
     ]
-    
-    const uint8_t BAR_OFFSET = 0;  //開始小節オフセット
     
     const uint8_t BEATS_PER_BAR = 4;  //小節あたりの拍数
     
@@ -130,7 +128,7 @@ const uint8_t score[][3] = {
     
     const uint8_t TEMPO_CHANGE_BAR = 15;  //15小節目からTEMPO_FASTへ切替
     
-    uint16_t currentInterval = TEMPO_SHOW;  //現在の拍間隔[ms]
+    uint16_t currentInterval = TEMPO_SLOW;  //現在の拍間隔[ms]
     uint8_t barCount = 0;  //現在の小説カウンタ
     
    \end{lstlisting}
@@ -150,9 +148,9 @@ const uint8_t score[][3] = {
 \hline
 型 & 変数名 & 用途 \\\hline \hline
 int & noteIndex = 0 & 現在の音符ポインタ \\ \hline
-int & beatCount = 0 & 経過拍数（オフセット待機カウント） \\ \hline
+int & beatCount = 0 & 経過拍数 \\ \hline
 int & remainBeats = 0 & 現在の音符の残り拍数 \\ \hline
-bool & playing = false & 演奏開始フラグ（オフセット待機終了後に"true") \\ \hline
+bool & playing = false & 演奏フラグ（輝度キュー受信後に"true"になる） \\ \hline
 bool & fermata = false & フェルマータ中フラグ \\ \hline
   \end{tabular}  
 \end{table}
@@ -177,7 +175,7 @@ bool & fermata = false & フェルマータ中フラグ \\ \hline
     \hline
     関数名 & 引数 & 戻り値 & 処理内容 \\ \hline \hline
  %   bool detectBeat() & なし（void）&bool（ true / false )& フォトトランジスタで親機LEDを検出しtrueを返す．そうでない場合はfalseを返す． \\ \hline
-    void onBeatDetected() & なし（void）& なし（void）& 拍検出時の処理：オフセット待機，テンポ切替，音符更新・送信，前の音の停止の送信を実行 \\ \hline
+    void onBeatDetected() & なし（void）& なし（void）& 拍検出時の処理：輝度キュー受信によるスタートフラグ確認，テンポ切替，音符更新・送信，前の音の停止の送信を実行 \\ \hline
     void advanceNote() & なし（void）& なし（void）& 残り拍数を減らし，0になったらnoteIndexを進める \\ \hline
     void sendCurrentNote() & なし（void）& なし（void）& score[noteIndex] からNOTE ON パケットを生成し送信する \\ \hline
     void sendNoteOn(uint8\_t note, uint8\_t vel) &uint8\_ note：音名インデックス（0~127　休符=255）　uint8\_vel：音の強さ（0~127）& なし（void）& 演奏用ArduinoからProcessingへシリアル送信する \\ \hline

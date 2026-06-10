@@ -12,10 +12,10 @@
 
 \end{enumerate}
 
-5台のArduinoに対して，各楽器の演奏開始タイミング（オフセット）は表\ref{offset01}の通りである．なお，最終値は試聴によって調整を行う．
+各楽器の演奏開始タイミングは，親機Processingから送信される輝度キューによって決定される．発表当日にProcessingの楽器指定ボタンから順番に入力することで各子機へスタートキューが送られる．演奏予定順序を表\ref{offset01}に示す．なお，最終的な順序は試聴によって調整を行う．
 \begin{table}[H]
   \centering
-  \caption{オフセット一覧表}
+  \caption{演奏予定順序（親機から動的に指示）}
   \label{offset01}
   \begin{tabular}{|c|c|c|}
 \hline
