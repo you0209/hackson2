@@ -1,6 +1,6 @@
 \section{担当B — センサ処理・状態機械}
 
-当 B は，子機 Arduino における指揮者人形の観測・テンポ推定・状態管理を担う．
+担当 B は，子機 Arduino における指揮者人形の観測・テンポ推定・状態管理を担う．
 センサ構成は赤外線センサ（距離取得）とフォトトランジスタ（明るさ検出）の 2 種類であり，
 両センサの情報を組み合わせてテンポ状態を判定し，発音タイミングを決定する．
 
@@ -184,7 +184,6 @@ FERMATA 判定などに使う \\
 
 \begin{table}[H]
 \centering
-\caption{担当 B 主要関数一覧}
 \small
 \setlength{\tabcolsep}{3pt}
 \renewcommand{\arraystretch}{0.9}
@@ -317,7 +316,7 @@ LED検出時刻をもとにEMAでテンポ推定を更新する．
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.8\linewidth]{figures/flowchart_detectPhotoBeat.pdf}
+  \includegraphics[width=0.8\linewidth]{figures/tantoB/flowchart_detectPhotoBeat.pdf}
   \caption{detectPhotoBeat}
 \end{figure}
 
@@ -329,13 +328,13 @@ LED検出時刻をもとにEMAでテンポ推定を更新する．
 
 \begin{figure}[H]
   \centering
-  \includegraphics[page=1,width=0.8\linewidth]{figures/flowchart_updateState.pdf}
+  \includegraphics[page=1,width=0.8\linewidth]{figures/tantoB/flowchart_updateState.pdf}
   \caption{updateState（1/2）}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[page=2,width=0.8\linewidth]{figures/flowchart_updateState.pdf}
+  \includegraphics[page=2,width=0.8\linewidth]{figures/tantoB/flowchart_updateState.pdf}
   \caption{updateState（2/2）}
 \end{figure}
 
