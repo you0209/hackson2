@@ -124,3 +124,98 @@ ID & タスク名 & 担当者 & 進捗率（\%） & 備考 \\
 
 \end{longtable}
 \endgroup
+
+\section{ガントチャート（現在の進捗反映）}
+
+WBSタスクごとの予定週セルを，現時点の進捗率に応じて3段階で色分けして示す．
+日付は授業のある水曜日に基づく（6月3日は休講のため6月10日が次の授業日）．
+設計フェーズ（100番台）は本ガントチャートには含めない．
+
+\begin{table}[H]
+  \centering
+  \caption*{凡例（進捗率による色分け）}
+  \begin{tabular}{ll@{\hspace{1em}}ll@{\hspace{1em}}ll@{\hspace{1em}}ll}
+    \toprule
+    \pLow & 80\%未満 & \pMid & 80\%以上100\%未満 & \pDone & 100\% & \pNone & 未着手・未記入 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begingroup
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{p{0.7cm}p{3.8cm}p{1.7cm}p{0.8cm}p{0.8cm}p{0.9cm}p{0.8cm}p{0.8cm}p{0.9cm}p{0.9cm}}
+\toprule
+ID & タスク名 & 担当者 & 進捗 & \makecell{5/27\\(水)} & \makecell{6/10\\(水)} & \makecell{6/17\\(水)} & \makecell{6/24\\(水)} & \makecell{7/1\\(水)} & \makecell{7/8\\(水)} \\
+\midrule
+\endfirsthead
+
+\toprule
+ID & タスク名 & 担当者 & 進捗 & \makecell{5/27\\(水)} & \makecell{6/10\\(水)} & \makecell{6/17\\(水)} & \makecell{6/24\\(水)} & \makecell{7/1\\(水)} & \makecell{7/8\\(水)} \\
+\midrule
+\endhead
+
+\bottomrule
+\endfoot
+
+\multicolumn{10}{l}{\textbf{【200 実装フェーズ ／ 210 担当A実装（指揮者人形ユニット）】}} \\
+\midrule
+211 & サーボ機構組み立て & 長見・飛田 & 0\% & \pLow & \pLow &  &  &  &  \\
+212 & 腕・反射板取り付け & 長見・飛田 & 0\% & \pLow & \pLow &  &  &  &  \\
+214 & サーボ駆動回路配線 & 長見・飛田 & 0\% & \pLow & \pLow &  &  &  &  \\
+215 & サーボ制御SW実装 & 長見・飛田 & 80\% & \pMid & \pMid &  &  &  &  \\
+216 & 輝度エンコードLED制御SW実装 & 長見・飛田 & 50\% & \pLow & \pLow &  &  &  &  \\
+217 & Processing GUI実装 & 長見・飛田 & 100\% & \pDone & \pDone &  &  &  &  \\
+218 & シリアル通信実装（PC→Arduino） & 長見・飛田 & 100\% & \pDone & \pDone &  &  &  &  \\
+\midrule
+\multicolumn{10}{l}{\textbf{【200 実装フェーズ ／ 220 担当B実装（センサー・観測）】}} \\
+\midrule
+221 & 赤外線センサー配線 & 長野・慶田 & 50\% & \pLow & \pLow &  &  &  &  \\
+222 & フォトTr配線・遮光チャンバー & 長野・慶田 & 70\% & \pLow & \pLow &  &  &  &  \\
+223 & センサーISR実装 & 長野・慶田 & 70\% & \pLow & \pLow &  &  &  &  \\
+224 & テンポ推定実装 & 長野・慶田 & 90\% & \pMid &  &  &  &  &  \\
+226 & INSTRUMENT\_ID輝度キュー実装 & 長野・慶田 & 50\% & \pLow & \pLow &  &  &  &  \\
+227 & シリアル通信実装（担当C向け） & 長野・慶田 & 80\% & \pMid & \pMid &  &  &  &  \\
+\midrule
+\multicolumn{10}{l}{\textbf{【200 実装フェーズ ／ 230 担当C実装（演奏制御）】}} \\
+\midrule
+231 & 拍検出・オフセット実装 & 長山・慶田 & 80\% & \pMid & \pMid &  &  &  &  \\
+232 & 楽譜進行制御実装 & 長山・慶田 & 80\% & \pMid & \pMid &  &  &  &  \\
+\midrule
+\multicolumn{10}{l}{\textbf{【200 実装フェーズ ／ 240 担当D実装（音響合成）】}} \\
+\midrule
+241 & シリアル受信処理実装 & 中村・尾添 & — & \pNone & \pNone &  &  &  &  \\
+242 & 音色合成エンジン実装 & 中村・尾添 & — & \pNone & \pNone &  &  &  &  \\
+243 & エフェクト・フェルマータ延奏実装 & 中村・尾添 & — & \pNone & \pNone &  &  &  &  \\
+244 & 音色定義データ作成 & 中村・尾添 & — & \pNone & \pNone &  &  &  &  \\
+245 & ADSRパラメータ調整 & 中村・尾添 & — & \pNone & \pNone &  &  &  &  \\
+\midrule
+\multicolumn{10}{l}{\textbf{【300 テストフェーズ ／ 310 事前確認テスト（P1-P6）】}} \\
+\midrule
+311 & 赤外線センサー精度確認 & 長野・慶田 & — & \pNone & \pNone &  &  &  &  \\
+312 & フォトTr検出距離確認 & 長見・飛田/長野・慶田 & — & \pNone & \pNone &  &  &  &  \\
+313 & LED輝度・フォトTr検出確認 & 長見・飛田/長野・慶田 & — & \pNone & \pNone &  &  &  &  \\
+315 & サーボ最大BPM確認 & 長見・飛田 & — & \pNone & \pNone &  &  &  &  \\
+316 & Arduino-Processing通信確認 & 長野・長山・慶田/中村・尾添 & — & \pNone & \pNone &  &  &  &  \\
+\midrule
+\multicolumn{10}{l}{\textbf{【300 テストフェーズ ／ 320 単体テスト（U1-U4）】}} \\
+\midrule
+322 & 状態機械単体テスト & 長野・慶田 & — & \pNone &  & \pNone &  &  &  \\
+323 & 楽譜進行・シリアル送信単体テスト & 長山・慶田 & — & \pNone &  & \pNone &  &  &  \\
+324 & 音色合成・エフェクト単体テスト & 中村・尾添 & — & \pNone &  & \pNone &  &  &  \\
+\midrule
+\multicolumn{10}{l}{\textbf{【300 テストフェーズ ／ 330 結合テスト（C1-C3）】}} \\
+\midrule
+331 & Arduino-Processing遅延測定 & 長野・長山・慶田/中村・尾添 & — & \pNone &  & \pNone &  &  &  \\
+332 & 同期・テンポ追従確認 & 長野・長山・慶田 & — & \pNone &  & \pNone & \pNone &  &  \\
+333 & フェルマータ動作確認 & 長野・長山・慶田/中村・尾添 & — & \pNone &  & \pNone & \pNone &  &  \\
+\midrule
+\multicolumn{10}{l}{\textbf{【300 テストフェーズ ／ 340 システムテスト（S1-S3）】}} \\
+\midrule
+341 & 通し演奏テスト & 全員 & — & \pNone &  &  & \pNone &  &  \\
+342 & 拍タイミング精度評価 & 全員 & — & \pNone &  &  & \pNone &  &  \\
+343 & テンポ変化・フェルマータ完全確認 & 全員 & — & \pNone &  &  & \pNone &  &  \\
+\midrule
+
+\end{longtable}
+\endgroup

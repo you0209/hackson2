@@ -30,12 +30,30 @@
 % 画像
 \usepackage{graphicx}
 
+% 色（colortbl も同時にロード）
+\usepackage[table]{xcolor}
+
 % 表
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{tabularx}
 \usepackage{longtable}
 \usepackage{float}
+\usepackage{makecell}
+
+% =============================================================
+% ガント進捗用 色定義・セル塗りマクロ
+% （progress6/progress.tex のガント表で使用）
+% =============================================================
+\definecolor{progLow}{HTML}{F4ABAB}    % 80\%未満
+\definecolor{progMid}{HTML}{FFD966}    % 80\%以上100\%未満
+\definecolor{progDone}{HTML}{70AD47}   % 100\%
+\definecolor{progNone}{HTML}{D9D9D9}   % 未着手・未記入
+
+\newcommand{\pLow}{\cellcolor{progLow}}
+\newcommand{\pMid}{\cellcolor{progMid}}
+\newcommand{\pDone}{\cellcolor{progDone}}
+\newcommand{\pNone}{\cellcolor{progNone}}
 
 % =============================================================
 \title{Arduinoオーケストラ}
