@@ -15,7 +15,8 @@ const float IR_PEAK_MARGIN = 3.0f;
 int photoValue = 0;
 float calibratedPhotoValue = 0.0f;
 const float BEAT_DETECT_THRESH = 50.0f;
-const float PERFORM_START_THRESH = 80.0f;
+const float PERFORM_START_THRESH_MIN = 60.0f;
+const float PERFORM_START_THRESH_MAX = 80.0f;
 bool beatDetected = false;
 bool photoHigh = false;
 
@@ -115,7 +116,13 @@ void predictBeatByIr() {};
 // フォトトランジスタの値より拍を判定
 void detectPhotoBeat() {
   if (!photoHigh && calibratedPhotoValue >= BEAT_DETECT_THRESH) {
-    if (state != IDLE && state != CALIBRATE && state != PREBEAT && !isPlaying && calibratedPhotoValue >= PERFORM_START_THRESH) isPlaying = true;
+    if (
+        state != IDLE &&
+        state != CALIBRATE && state != PREBEAT &&
+        !isPlaying &&
+        calibratedPhotoValue >= PERFORM_START_THRESH_MIN &&
+        calibratedPhotoValue <= PERFORM_START_THRESH_MAX
+      ) isPlaying = true;
     photoHigh = true;
     currentBeatTime = millis();
     lastBeatTime = currentBeatTime;
@@ -290,13 +297,9 @@ void led() {
   };
 };
 
-bool test = false;
-
 void B_loop() {
   led();
   readPhoto();
-  readIr();
-  updateIrAverage();
   detectPhotoBeat();
   if (beatDetected) {
     unsigned long now = millis();
