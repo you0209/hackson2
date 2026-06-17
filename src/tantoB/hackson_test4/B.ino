@@ -64,9 +64,7 @@ bool detectRawMovement() {
     prevRawIrDistance = irDistance;
     return false;
   };
-  float delta = abs(irDistance - prevRawIrDistance);
-  prevRawIrDistance = irDistance;
-  return delta > RAW_MOVE_THRESH;
+  return abs(irDistance - prevRawIrDistance) > RAW_MOVE_THRESH;
 };
 
 // フォトトランジスタの値を取得、キャリブレート
@@ -172,16 +170,14 @@ void updateTempoByIr() {
 // フェルマータを判定
 bool detectFermata() {
   unsigned long currentTime = millis();
-  if (currentTime > nextBeatTime + (unsigned long)(estimatedBeatInterval / 4)) {
-    if (abs(calibratedIrValue - previousCalibratedIrValue) < STOP_THRESH) {
-      staticCount++;
-      if (staticCount >= FERMATA_THRESH) {
-        staticCount = 0;
-        return true;
-      };
-    }
-    else staticCount = 0;
-  };
+  if (abs(calibratedIrValue - previousCalibratedIrValue) < STOP_THRESH) {
+    staticCount++;
+    if (staticCount >= FERMATA_THRESH) {
+      staticCount = 0;
+      return true;
+    };
+  }
+  else staticCount = 0;
   return false;
 };
 
@@ -321,12 +317,28 @@ void autoDetectBeat() {
 }
 // ================================
 
+unsigned long prevTime = 0;
+int loopCount = 0;
+
 void B_loop() {
+  loopCount++;
+  unsigned long now = millis();
+  if (now - prevTime > 1000) {
+    prevTime = now;
+    Serial.println(loopCount);
+    loopCount = 0;
+    };
   readIr();
-  Serial.print("d: ");
-  Serial.print(irDistance);
-  Serial.print(", s: ");
-  Serial.println(state);
+  //Serial.print("d: ");
+  //Serial.print(irDistance);
+  //Serial.print(", s: ");
+  //Serial.print(state);
+  //Serial.print(", max: ");
+  //Serial.print(irMax);
+  //Serial.print(", min: ");
+  //Serial.print(irMin);
+  //Serial.print(", p: ");
+  //Serial.println(calibratedIrValue);
   updateIrAverage();
   autoDetectBeat();
   if (beatDetected) {
