@@ -264,7 +264,7 @@ void led() {
     ledState = true;
     prevmillis = now;
   }
-  else if (ledCount >= CHANGE_THRESH && now - prevmillis >= 2000 && !ledState) {
+  else if (ledCount >= CHANGE_THRESH && now - prevmillis >= 500 && !ledState) {
     ledCount++;
     analogWrite(LED_PIN, 255);
     ledState = true;
