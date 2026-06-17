@@ -104,7 +104,6 @@ bool detectIrPeak() {
     (center - current) > IR_PEAK_MARGIN &&
     (center - previous) > IR_PEAK_MARGIN
   ) {
-    Serial.println("PEAK");
     return true;
   }
   else return false;
@@ -192,12 +191,10 @@ void updateState() {
           photoMin = 9999;
           startCalibrateTime = millis();
           state = CALIBRATE;
-          Serial.println("CALIBRATE");
         }
         else {
           prebeatCount = 0;
           state = PREBEAT;
-          Serial.println("PREBEAT");
         };
       };
       break;
@@ -208,7 +205,6 @@ void updateState() {
         isCalibrated = true;
         prebeatCount = 0;
         state = PREBEAT;
-        Serial.println("PREBEAT");
       };
       break;
     };
@@ -216,22 +212,18 @@ void updateState() {
       if (prebeatCount >= PREBEAT_THRESH) {
         prebeatCount = 0;
         state = PLAYING;
-        Serial.println("PLAYING");
       };
       break;
     };
     case PLAYING: {
       if (false) {
         state = FERMATA;
-        Serial.println("FERMATA");
       }
       else if (isTempoChanged) {
         state = TEMPO_CHANGE;
-        Serial.println("TEMPO_CHANGE");  
       }
       else if (millis() - lastBeatTime > (unsigned long)(estimatedBeatInterval * MISSED_BEAT_THRESH)) {
         state = IDLE;
-        Serial.println("IDLE");
       };
       break;
     };
@@ -240,18 +232,15 @@ void updateState() {
       if (stableCount >= STABLE_THRESH) {
         stableCount = 0;
         state = PLAYING;
-        Serial.println("PLAYING");
       };
       if (millis() - lastBeatTime > (unsigned long)(estimatedBeatInterval * MISSED_BEAT_THRESH)) {
         state = IDLE;
-        Serial.println("IDLE");  
       };
       break;
     };
     case FERMATA: {
       if (abs(calibratedIrValue - previousCalibratedIrValue) > STOP_THRESH) {
         state = PLAYING;
-        Serial.println("PLAYING");
       };
       break;
     };
@@ -268,7 +257,6 @@ void led() {
   unsigned long now = millis();
   if (ledCount == CHANGE_THRESH && !test) {
     test = true;
-    Serial.println("CHANGE!!!");
     };
   if (ledCount < CHANGE_THRESH && now - prevmillis >= 1000 && !ledState) {
     ledCount++;
@@ -289,29 +277,30 @@ void led() {
   };
 };
 
+// ビートフラッシュ用タイマー
+unsigned long beatFlashUntil = 0;
+const unsigned long BEAT_FLASH_MS = 150;
+
+// state enum の順番: IDLE=0, CALIBRATE=1, PREBEAT=2, PLAYING=3, TEMPO_CHANGE=4, FERMATA=5
+void showMatrix() {
+  uint8_t frame[8][12] = {};
+  if (millis() < beatFlashUntil) frame[0][0] = 1; // BEAT → (0,0)
+  frame[state][1] = 1;                             // state → col1, row=state番号
+  matrix.renderBitmap(frame, 8, 12);
+}
+
 void B_loop() {
   led();
   readPhoto();
   detectPhotoBeat();
   if (beatDetected) {
-    unsigned long now = millis();
-    if (isPlaying) {
-      Serial.println("PLAY");
-    }
-    else {
-      Serial.println("BEAT");
-    };
+    beatFlashUntil = millis() + BEAT_FLASH_MS;
     isTempoChanged = false;
     updateTempoByPhoto();
-    Serial.print("now: ");
-    Serial.print(now);
-    Serial.print(", ema: ");
-    Serial.print(previousNextBeatTime);
-    Serial.print(", diff: ");
-    Serial.println(now - previousNextBeatTime);
     beatDetected = false;
     beatUpdated = true;
     stableCount++;
   };
   updateState();
+  showMatrix();
 };

@@ -1,4 +1,7 @@
 #include <Arduino.h>
+#include "Arduino_LED_Matrix.h"
+
+ArduinoLEDMatrix matrix;
 
 // 共通変数
 #define PHOTO_PIN A1
@@ -13,6 +16,7 @@ State state = IDLE;
 
 void setup() {
   Serial.begin(115200);
+  matrix.begin();
   pinMode(IR_PIN, INPUT);
   pinMode(PHOTO_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
