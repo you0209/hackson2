@@ -2,10 +2,11 @@ int noteIndex = 0; //現在の音符ポインタ
 unsigned long time;
 int i=0;
 unsigned long sendTime = 0; //シリアル通信を行う時間
+uint8_t note_off = 1; //前の音の終了
 uint8_t note = 0; //音名インデックス（休符＝7）
 uint8_t vel = 0; //音の強さ（0~127）
 float note_long = 0; //音の長さ
-const uint8_t score[][3] = {
+const float score[][3] = {
   {0, 100,1},
   {1, 100,2},
   {2, 100,1},
@@ -32,7 +33,7 @@ unsigned long sendTime_set(unsigned long nextBeatTime) {//担当Bよりより出
 
 void C_loop() {
   if (state != IDLE && state != CALIBRATE && state != PREBEAT && state != FERMATA) {
-    if(noteIndex <= SCORE_LEN){
+    if(noteIndex < SCORE_LEN){
 
         note = score[noteIndex][0];
         vel  = score[noteIndex][1];
@@ -44,6 +45,7 @@ void C_loop() {
             sendTime = sendTime_set(time);
 
             if (millis() >= sendTime){
+           Serial.write(note_off);
            Serial.write(note);
            Serial.write(vel);
            Serial.write(note_long);
@@ -57,6 +59,7 @@ void C_loop() {
             if (i==0){
            sendTime = sendTime_set(time);
             if (millis() >= sendTime){
+           Serial.write(note_off);
            Serial.write(note);
            Serial.write(vel);
            Serial.write(note_long);
