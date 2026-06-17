@@ -18,7 +18,11 @@ void setup() {
   Serial.begin(115200);
   Wire.begin();
   sensor.setTimeout(500);
-  sensor.init();
+  if (!sensor.init()) {
+    Serial.println("VL53L0X init FAILED");
+    while (1);  // 初期化失敗時はここで停止
+  }
+  Serial.println("VL53L0X init OK");
   sensor.startContinuous();
   pinMode(PHOTO_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
