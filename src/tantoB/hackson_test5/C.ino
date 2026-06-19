@@ -1,5 +1,5 @@
 int noteIndex = 0; //現在の音符ポインタ
-unsigned long time;
+unsigned long soundTime;
 int i=0;
 unsigned long sendTime = 0; //シリアル通信を行う時間
 uint8_t note_off = 1; //前の音の終了
@@ -67,11 +67,11 @@ void C_loop() {
         note = score[noteIndex][0];
         vel  = score[noteIndex][1];
         note_long = score[noteIndex][2];
-      if (beatUpdated && isPlaying) {
+      if (beatUpdated) {
 
            if (note_long < 1.0){
-            time = currentBeatTime + ( nextBeatTime - currentBeatTime ) * note_long;
-            sendTime = sendTime_set(time);
+            soundTime = currentBeatTime + ( nextBeatTime - currentBeatTime ) * note_long;
+            sendTime = sendTime_set(soundTime);
 
             if (millis() >= sendTime){
            Serial.write(note_off);
@@ -86,7 +86,7 @@ void C_loop() {
         }
            else {
             if (i==0){
-           sendTime = sendTime_set(time);
+           sendTime = sendTime_set(soundTime);
             if (millis() >= sendTime){
            Serial.write(note_off);
            Serial.write(note);
@@ -98,7 +98,7 @@ void C_loop() {
             }           
            }
              else if (i < note_long){
-              sendTime = sendTime_set(time);    
+              sendTime = sendTime_set(soundTime);    
               if (millis() >= sendTime){          
               beatUpdated = false;
               i++;

@@ -3,12 +3,14 @@ import processing.serial.*;
 Serial myPort;
 String bpmInput = "";
 String message = "BPMを入力してください";
-int currentBPM = 100;
+int currentBPM = 60;
+String currentStateLabel = "待機状態";  // Arduino から受信した状態
 
 void setup(){
   size(600, 700);
   String portName = Serial.list()[0];
   myPort = new Serial(this, "/dev/cu.usbmodem34B7DA62063C2", 115200);
+  myPort.bufferUntil('\n');  // 改行ごとに serialEvent() を呼ぶ
   
   textAlign(CENTER, CENTER);
   textSize(16);
@@ -25,7 +27,11 @@ void draw(){
   
   drawButton(225, 100, 150, 50, "演奏開始", color(100, 200, 100));
   drawButton(225, 150, 150, 50, "演奏終了", color(200, 100, 100));
-  drawButton(225, 200, 150, 50, "フェルマータ", color(100, 100, 200));
+  if (currentStateLabel.equals("フェルマータ")) {
+    drawButton(225, 200, 150, 50, "再開", color(255, 165, 0));
+  } else {
+    drawButton(225, 200, 150, 50, "フェルマータ", color(100, 100, 200));
+  }
   
   drawButton(50 , 300, 100, 50, "楽器A", color(100, 100, 100));
   drawButton(150, 300, 100, 50, "楽器B", color(100, 100, 100));
@@ -43,6 +49,28 @@ void draw(){
   fill(50);
   text(message, 300, 420);
   text("現在の設定値: " + currentBPM, 300, 520);
+  
+  // 演奏状態表示
+  drawStateLabel(300, 570);
+}
+
+// 演奏状態をラベルで表示
+void drawStateLabel(int cx, int cy) {
+  color stateColor;
+  if (currentStateLabel.equals("演奏中")) {
+    stateColor = color(100, 200, 100);
+  } else if (currentStateLabel.equals("フェルマータ")) {
+    stateColor = color(100, 100, 200);
+  } else if (currentStateLabel.equals("予備拍")) {
+    stateColor = color(255, 200, 0);
+  } else {
+    stateColor = color(160, 160, 160);  // 待機状態・その他
+  }
+  
+  fill(stateColor);
+  rect(cx - 90, cy - 20, 180, 40, 8);
+  fill(255);
+  text(currentStateLabel, cx, cy);
 }
 
 void drawButton(int x, int y, int w, int h, String label, color c) {
@@ -50,6 +78,25 @@ void drawButton(int x, int y, int w, int h, String label, color c) {
   rect(x, y, w, h, 5);
   fill(255);
   text(label, x + w/2, y + h/2);
+}
+
+// Arduino からの受信
+void serialEvent(Serial p) {
+  String line = trim(p.readStringUntil('\n'));
+  if (line == null || line.length() == 0) return;
+  
+  println("Recv: " + line);
+  
+  if (line.startsWith("STATE:")) {
+    String state = line.substring(6);
+    if (state.equals("STANDBY"))       currentStateLabel = "待機状態";
+    else if (state.equals("PREBEAT"))  currentStateLabel = "予備拍";
+    else if (state.equals("PLAYING"))  currentStateLabel = "演奏中";
+    else if (state.equals("FERMATA"))  currentStateLabel = "フェルマータ";
+    else if (state.equals("STOP"))     currentStateLabel = "停止中";
+  } else if (line.startsWith("BPM_OK:")) {
+    currentBPM = int(line.substring(7));
+  }
 }
 
 void mousePressed() {
@@ -61,9 +108,13 @@ void mousePressed() {
   if (mouseX > 225 && mouseX < 375 && mouseY > 150 && mouseY < 200) {
     sendCommand("STOP");
   }
-  // フェルマータボタン
+  // フェルマータボタン（トグル：演奏中→フェルマータ、フェルマータ→演奏中）
   if (mouseX > 225 && mouseX < 375 && mouseY > 200 && mouseY < 250) {
-    sendCommand("FERMATA");
+    if (currentStateLabel.equals("フェルマータ")) {
+      sendCommand("RESUME");
+    } else {
+      sendCommand("FERMATA");
+    }
   }
   
   //楽器A
@@ -101,15 +152,14 @@ void validateAndSendBPM() {
   }
   
   int val = int(bpmInput);
-  // BPM 60~140の範囲外ならエラー
   if (val >= 40 && val <= 160) {
     currentBPM = val;
     sendCommand("BPM:" + val);
     message = "BPM " + val + " を送信しました";
   } else {
-    message = "範囲外です (60~140)";
+    message = "範囲外です (40~160)";
   }
-  bpmInput = ""; // 入力欄をクリア
+  bpmInput = "";
 }
 
 void sendCommand(String cmd) {

@@ -5,9 +5,14 @@
  * 対応コマンド（Processing → Arduino, 115200bps, 改行終端）:
  *   START        : 予備拍 → 演奏中
  *   STOP         : 演奏停止 → 待機
- *   FERMATA      : フェルマータ開始（腕を短時間固定）
+ *   FERMATA      : フェルマータ開始
+ *   RESUME       : フェルマータ解除 → 演奏中
  *   BPM:xxx      : BPM 変更（40〜160 の整数）
- *   INSTRUMENT:n : 楽器キュー（n=1〜5、対応光量で1拍だけ LED 発光）
+ *   INSTRUMENT:n : 楽器キュー（n=1〜5、対応光量で最前点1回だけ LED 発光）
+ *
+ * Arduino → Processing 通知:
+ *   STATE:STANDBY / STATE:PREBEAT / STATE:PLAYING / STATE:FERMATA / STATE:STOP
+ *   BPM_OK:xxx
  */
 
 #include <Servo.h>
@@ -23,56 +28,59 @@
 // 状態定義
 // ───────────────────────────────────────────
 enum State {
-  STATE_STANDBY,    // 待機
-  STATE_PREBEAT,    // 予備拍（4 拍分）
-  STATE_PLAYING,    // 演奏中
-  STATE_FERMATA,    // フェルマータ
-  STATE_STOP        // 演奏停止（腕を安全位置へ移動後、待機へ）
+  STATE_STANDBY,
+  STATE_PREBEAT,
+  STATE_PLAYING,
+  STATE_FERMATA,
+  STATE_STOP
 };
 
 // ───────────────────────────────────────────
 // 定数
 // ───────────────────────────────────────────
-const int BPM_MIN         = 60;
-const int BPM_MAX         = 140;
+const int BPM_MIN         = 40;
+const int BPM_MAX         = 160;
 const int BPM_DEFAULT     = 100;
 
-const int SERVO_CENTER    = 30;   // 腕の中心角度 [deg]  (0°〜60° の中点)
-const int SERVO_AMPLITUDE = 30;   // 腕の振れ幅   [deg] (±30° → 0°〜60°)
-const int SERVO_SAFE      =  0;   // 停止・待機時の安全位置（起点 0°）
-const int LED_ON_STEPS    =  2;   // LED 点灯を維持するステップ数（最前点の前後 ±1 ステップ）
+const int SERVO_CENTER    = 30;
+const int SERVO_AMPLITUDE = 30;
+const int SERVO_SAFE      =  0;
 
-// サーボ正弦波の分割ステップ数（1 拍 = SERVO_STEPS ステップ）
 const int SERVO_STEPS      = 20;
-const int SERVO_FRONT_STEP = SERVO_STEPS / 4;  // 最前点ステップ（sin 最大 = step 5）
+const int SERVO_FRONT_STEP = SERVO_STEPS / 4;
+
 const int INSTRUMENT_BRIGHTNESS[6] = { 0, 51, 102, 153, 204, 255 };
-// インデックス 0 は未使用、1〜5 が楽器 A〜E に対応
 
 // ───────────────────────────────────────────
 // グローバル変数
 // ───────────────────────────────────────────
-Servo              servo;
+Servo   servo;
 
-FspTimer           beatTimer;
-uint8_t            timerType = AGT_TIMER;
-int8_t             timerCh   = -1;
+FspTimer beatTimer;
+uint8_t  timerType = AGT_TIMER;
+int8_t   timerCh   = -1;
 
-volatile State     currentState   = STATE_STANDBY;
-volatile int       currentBPM     = BPM_DEFAULT;
-volatile int       servoStep      = 0;
-volatile int       prebeatCount   = 0;
-volatile bool      beatFlag       = false;
+volatile State currentState  = STATE_STANDBY;
+volatile int   currentBPM    = BPM_DEFAULT;
+volatile int   servoStep     = 0;
+volatile int   prebeatCount  = 0;
+volatile bool  beatFlag      = false;
+volatile bool  stateChanged  = false;  // 予備拍→演奏中の遷移を loop() へ通知
 
-// 楽器キュー：0 = なし、1〜5 = 楽器 A〜E
-volatile int       pendingCue     = 0;
+volatile int   pendingCue    = 0;
 
 String serialBuffer = "";
 
 // ───────────────────────────────────────────
-// 内部ヘルパー宣言
+// 関数宣言
 // ───────────────────────────────────────────
 void setupTimer(int bpm);
 void onBeatTimer(timer_callback_args_t *args);
+void updateServo();
+void updateLED();
+String receiveCommand();
+void changeState(State s);
+void setBPM(int bpm);
 
 // ===================================================================
 // setup()
@@ -80,15 +88,12 @@ void onBeatTimer(timer_callback_args_t *args);
 void setup() {
   Serial.begin(115200);
 
-  // サーボ初期化
   servo.attach(PIN_SERVO);
   servo.write(SERVO_SAFE);
 
-  // LED 初期化（PWM ピン）
   pinMode(PIN_LED, OUTPUT);
   analogWrite(PIN_LED, 0);
 
-  // タイマチャンネルを一度だけ確保して起動
   timerCh = FspTimer::get_available_timer(timerType);
   if (timerCh < 0) {
     timerType = GPT_TIMER;
@@ -97,13 +102,14 @@ void setup() {
   setupTimer(BPM_DEFAULT);
 
   Serial.println("READY");
+  Serial.println("STATE:STANDBY");
 }
 
 // ===================================================================
 // loop()
 // ===================================================================
 void loop() {
-  // ── シリアル受信 ──
+  // シリアル受信
   String cmd = receiveCommand();
   if (cmd.length() > 0) {
     if (cmd == "START") {
@@ -113,6 +119,10 @@ void loop() {
     } else if (cmd == "FERMATA") {
       if (currentState == STATE_PLAYING) {
         changeState(STATE_FERMATA);
+      }
+    } else if (cmd == "RESUME") {
+      if (currentState == STATE_FERMATA) {
+        changeState(STATE_PLAYING);
       }
     } else if (cmd.startsWith("BPM:")) {
       int val = cmd.substring(4).toInt();
@@ -125,16 +135,21 @@ void loop() {
     }
   }
 
-  // ── STOP 後処理：サーボを安全位置へ動かして待機へ ──
+  // STOP 後処理
   if (currentState == STATE_STOP) {
     servo.write(SERVO_SAFE);
-    delay(300);
     changeState(STATE_STANDBY);
+  }
+
+  // 予備拍→演奏中の遷移通知（ISR内では Serial 送信できないため）
+  if (stateChanged) {
+    stateChanged = false;
+    Serial.println("STATE:PLAYING");
   }
 }
 
 // ===================================================================
-// onBeatTimer()  — タイマ割り込みコールバック
+// onBeatTimer()
 // ===================================================================
 void onBeatTimer(timer_callback_args_t *args) {
   (void)args;
@@ -144,13 +159,14 @@ void onBeatTimer(timer_callback_args_t *args) {
     case STATE_PREBEAT:
       updateServo();
       updateLED();
-      if (servoStep == 0) {          // 1 拍完了
+      if (servoStep == 0) {
         beatFlag = true;
         if (currentState == STATE_PREBEAT) {
           prebeatCount++;
           if (prebeatCount >= 4) {
             currentState = STATE_PLAYING;
             prebeatCount = 0;
+            stateChanged = true;
           }
         }
       }
@@ -182,16 +198,9 @@ void updateServo() {
 
 // ===================================================================
 // updateLED()
-//   最前点（SERVO_FRONT_STEP）のステップでのみ発光
-//   servoStep はインクリメント後なので、SERVO_FRONT_STEP+1 と比較する
-//   ・pendingCue があれば対応光量で点灯し消費
-//   ・なければ通常フラッシュ（最大輝度）
 // ===================================================================
 void updateLED() {
-  // updateServo() でインクリメント済みなので、
-  // 実行前の servoStep == SERVO_FRONT_STEP のとき → 現在 servoStep == SERVO_FRONT_STEP+1
   bool atFront = (servoStep == SERVO_FRONT_STEP + 1);
-
   if (atFront) {
     int brightness = 255;
     if (pendingCue > 0) {
@@ -223,7 +232,7 @@ String receiveCommand() {
 }
 
 // ===================================================================
-// changeState(State s)
+// changeState()
 // ===================================================================
 void changeState(State s) {
   currentState = s;
@@ -235,31 +244,32 @@ void changeState(State s) {
       servoStep    = 0;
       prebeatCount = 0;
       pendingCue   = 0;
+      Serial.println("STATE:STANDBY");
       break;
-
     case STATE_PREBEAT:
       servoStep    = 0;
       prebeatCount = 0;
+      Serial.println("STATE:PREBEAT");
       break;
-
     case STATE_PLAYING:
       servoStep = 0;
+      Serial.println("STATE:PLAYING");
       break;
-
     case STATE_FERMATA:
       servo.write(SERVO_CENTER + SERVO_AMPLITUDE);
       analogWrite(PIN_LED, 0);
+      Serial.println("STATE:FERMATA");
       break;
-
     case STATE_STOP:
       analogWrite(PIN_LED, 0);
       pendingCue = 0;
+      Serial.println("STATE:STOP");
       break;
   }
 }
 
 // ===================================================================
-// setBPM(int bpm)
+// setBPM()
 // ===================================================================
 void setBPM(int bpm) {
   if (bpm < BPM_MIN || bpm > BPM_MAX) {
@@ -267,29 +277,24 @@ void setBPM(int bpm) {
     return;
   }
   currentBPM = bpm;
-
   beatTimer.stop();
   beatTimer.end();
   setupTimer(bpm);
-
   Serial.print("BPM_OK:");
   Serial.println(bpm);
 }
 
 // ===================================================================
-// setupTimer(int bpm)
+// setupTimer()
 // ===================================================================
 void setupTimer(int bpm) {
   unsigned long periodUs = 60000000UL / (unsigned long)bpm / SERVO_STEPS;
   float freqHz = 1000000.0f / (float)periodUs;
 
   beatTimer.begin(TIMER_MODE_PERIODIC,
-                  timerType,
-                  timerCh,
-                  freqHz,
-                  0.0f,
+                  timerType, timerCh,
+                  freqHz, 0.0f,
                   onBeatTimer);
-
   beatTimer.setup_overflow_irq();
   beatTimer.open();
   beatTimer.start();
