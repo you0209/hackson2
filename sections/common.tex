@@ -483,6 +483,7 @@ TPM一覧を表\ref{tab:tpm}に示す．
     TPM-3 & Arduino→Processing転送遅延：$\leq 50\,\mathrm{ms}$ \\
     TPM-4 & EMA（$\alpha=0.2$）テンポ収束拍数：$\leq 13$拍 \\
     TPM-5 & 指揮者人形が追従できる最大BPM：$\geq 104\,\mathrm{bpm}$ \\
+    TPM-6 & テンポ予測誤差（予測拍時刻と実測拍時刻の差）：$\leq 1\,\mathrm{ms}$ \\
     \bottomrule
   \end{tabularx}
 \end{table}
@@ -505,6 +506,7 @@ TPM一覧を表\ref{tab:tpm}に示す．
     TPM-3 & Arduino側の送信タイムスタンプとProcessing側の受信タイムスタンプの差分を計測・記録する \\
     TPM-4 & 既知BPMのシミュレーションデータを入力してEMAの収束拍数を計測する \\
     TPM-5 & 指定BPMで指揮者人形を動作させ，脱調・遅延の有無をシリアルモニタで確認する \\
+    TPM-6 & シリアルモニタで予測拍時刻と実測拍時刻の差を100回計測し，平均誤差を記録する \\
     \bottomrule
   \end{tabularx}
 \end{table}

@@ -20,6 +20,7 @@ TPM項目の定義はマネジメント計画書（\texttt{management\_plan.tex}
     TPM-3 & Arduino→Processing転送遅延：$\leq 50\,\mathrm{ms}$ \\
     TPM-4 & EMA（$\alpha=0.2$）テンポ収束拍数：$\leq 13$拍 \\
     TPM-5 & 指揮者人形が追従できる最大BPM：$\geq 104\,\mathrm{bpm}$ \\
+    TPM-6 & テンポ予測誤差（予測拍時刻と実測拍時刻の差）：$\leq 1\,\mathrm{ms}$ \\
     \bottomrule
   \end{tabularx}
 \end{table}
@@ -40,6 +41,7 @@ TPM項目の定義はマネジメント計画書（\texttt{management\_plan.tex}
 
 % --- 各TPMの測定推移を記載 ---
 % 書式: YYYY-MM-DD & TPM-X & 目標値 & 実測値 & ○/× & 備考 \\
+2026-06-17 & TPM-6 & $\leq 1\,\mathrm{ms}$ & $0.025\,\mathrm{ms}$ & ○ & 100回検出による平均誤差（UNIT-4単体テスト時に計測） \\
 
 \bottomrule
 \endfoot
