@@ -105,8 +105,9 @@ class CommunicationManager {
       return;
     }
 
-    // NOTE_OFF = 0 の場合は、前音を残したまま新しい音を重ねる
-    instrument.noteOn(note, vel);
-    println("[EVENT] noteOn note=" + note + " vel=" + vel + " long=" + lng);
+    // NOTE_OFF = 0 の場合は、前音を残したまま新しい音を重ねる。
+    // lng は音価コード（2=2分, 4=4分, 8=8分音符）。その長さで自動消音する。
+    instrument.noteOn(note, vel, lng);
+    println("[EVENT] noteOn note=" + note + " vel=" + vel + " noteValue=" + lng);
   }
 }

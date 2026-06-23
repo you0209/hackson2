@@ -99,7 +99,7 @@ class CommunicationManager {
       return;
     }
 
-    instrument.noteOn(note, vel);
-    println("[EVENT] noteOn note=" + note + " vel=" + vel + " long=" + lng);
+    instrument.noteOn(note, vel, lng); // lng = 音価コード（2/4/8）
+    println("[EVENT] noteOn note=" + note + " vel=" + vel + " noteValue=" + lng);
   }
 }

@@ -5,6 +5,9 @@ class InstrumentUnit {
 
   float masterVolume = 1.0f;
 
+  // 四分音符相当の基準発音長（秒）。キックはタイトに短く。
+  final float BASE_DURATION = 0.45f;
+
   ArrayList<BassDrumInstrument> activeVoices =
     new ArrayList<BassDrumInstrument>();
 
@@ -16,7 +19,31 @@ class InstrumentUnit {
     masterVolume = constrain(volume, 0.0f, 1.0f);
   }
 
+  /*
+    音価コード（noteLength）→ 発音長の倍率（lengthScale）。
+    2=2分音符（長め） / 4=4分音符（標準） / 8=8分音符（短め）。それ以外は標準扱い。
+    バスドラムは一発ものなので、この倍率で鳴らす長さ（playNote の長さ）を変える。
+    テンポには依存しない（長さの主権は本来 NOTE_OFF 側だが、打楽器は自然減衰で扱う）。
+  */
+  float getLengthScale(int noteLength) {
+    if (noteLength == 2) {
+      return 1.8f;
+    } else if (noteLength == 4) {
+      return 1.0f;
+    } else if (noteLength == 8) {
+      return 0.45f;
+    } else {
+      return 1.0f;
+    }
+  }
+
+  // キーボード確認用：音価指定なし（四分音符として発音）
   void noteOn(int noteIndex, int velocity) {
+    noteOn(noteIndex, velocity, 4);
+  }
+
+  // noteLength: 音価（2=2分 / 4=4分 / 8=8分音符）。鳴らす長さ（playNote の長さ）に反映する。
+  void noteOn(int noteIndex, int velocity, int noteLength) {
     if (noteIndex == REST_NOTE) {
       return;
     }
@@ -37,10 +64,12 @@ class InstrumentUnit {
 
     activeVoices.add(bass);
 
-    // 短い打楽器なので playNote で自動的に noteOff させる
+    // 短い打楽器なので playNote で自動的に noteOff させる。
+    // 音価（lengthScale）に応じて鳴らす長さを変える（8分=短め, 2分=長め）。
+    float durSec = BASE_DURATION * getLengthScale(noteLength);
     out.playNote(
       0.0f,
-      0.50f,
+      durSec,
       bass
     );
 
@@ -48,7 +77,9 @@ class InstrumentUnit {
       "[InstrumentUnit] BassDrum noteOn" +
       " noteIndex=" + noteIndex +
       " velocity=" + velocity +
-      " ampRate=" + nf(ampRate, 0, 3)
+      " ampRate=" + nf(ampRate, 0, 3) +
+      " noteLength=" + noteLength +
+      " durSec=" + nf(durSec, 0, 3)
     );
   }
 
@@ -95,14 +126,14 @@ class InstrumentUnit {
 
       body =
         new Oscil(
-          120,
+          150,
           0,
           Waves.SINE
         );
 
       punch =
         new Oscil(
-          180,
+          240,
           0,
           Waves.SINE
         );
@@ -152,11 +183,11 @@ class InstrumentUnit {
       punch.patch(mix);
       click.patch(mix);
 
-      // バスドラムの低域を残しつつ、クリック成分も少し通す
+      // ドラムセットのキック。ビーターのクリック(アタック)を鋭く通すためカットオフを高めに
       lpFilter =
         new MoogFilter(
-          2200,
-          0.08f,
+          4200,
+          0.10f,
           MoogFilter.Type.LP
         );
 
@@ -172,7 +203,7 @@ class InstrumentUnit {
           0.001f,
           0.001f,
           1.0f,
-          0.12f
+          0.10f
         );
 
       mix.patch(lpFilter)
@@ -183,38 +214,38 @@ class InstrumentUnit {
     void noteOn(float duration) {
       gateEnv.patch(out);
 
-      // 低音のピッチを素早く落とす
+      // ピッチを素早く深く落とす（キックの「ドッ」という締まった沈み込み）
       bodyPitch.activate(
-        0.07f,
-        140.0f,
-        45.0f
+        0.05f,
+        150.0f,
+        50.0f
       );
 
-      // パンチ成分も短く落とす
+      // パンチ成分も素早く落とす（アタックの芯）
       punchPitch.activate(
-        0.045f,
-        220.0f,
-        75.0f
+        0.03f,
+        240.0f,
+        80.0f
       );
 
-      // 低音の余韻を短くして、ボーンと残りすぎないようにする
+      // 低音はタイトに減衰しつつ、パワーを上げて強い「ドッ」にする
       bodyAmp.activate(
-        0.22f,
-        0.82f * ampRate,
+        0.36f,
+        1.10f * ampRate,
         0.0f
       );
 
-      // 中低域のパンチを短めに出す
+      // 中低域のパンチを強めに出す（キックの芯の太さ）
       punchAmp.activate(
-        0.09f,
-        0.38f * ampRate,
+        0.12f,
+        0.68f * ampRate,
         0.0f
       );
 
-      // クリック音は一瞬だけ、アタックを出す
+      // ビーターのクリック（アタック）を大きく＝最初の「パチッ」を強く前に出す
       clickAmp.activate(
-        0.010f,
-        0.36f * ampRate,
+        0.016f,
+        0.95f * ampRate,
         0.0f
       );
 

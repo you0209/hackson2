@@ -102,7 +102,7 @@ class CommunicationManager {
       return;
     }
 
-    instrument.noteOn(note, vel);
+    instrument.noteOn(note, vel, lng); // lng = 音価コード（2/4/8）
 
     println(
       "[EVENT] Cymbal trigger note=" + note +

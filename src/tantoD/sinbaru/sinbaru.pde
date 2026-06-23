@@ -4,15 +4,17 @@ class InstrumentUnit {
   final int REST_NOTE = 6;
 
   int sampleRate = 44100;
-  float duration = 4.0f;
 
   float masterVolume = 1.0f;
 
-  AudioSample cymbal;
+  // 音価別の3サンプル（2分=長め / 4分=標準 / 8分=短め）
+  AudioSample cymbal2, cymbal4, cymbal8;
 
   InstrumentUnit(Minim minim) {
     this.minim = minim;
-    cymbal = createCymbal();
+    cymbal2 = createCymbal(1.8f);   // 2分音符：長め
+    cymbal4 = createCymbal(1.0f);   // 4分音符：標準
+    cymbal8 = createCymbal(0.45f);  // 8分音符：短め
   }
 
   void setMasterVolume(float volume) {
@@ -20,10 +22,17 @@ class InstrumentUnit {
   }
 
   AudioSample getCymbalSample() {
-    return cymbal;
+    return cymbal4;
   }
 
+  // キーボード確認用：音価指定なし（四分音符として発音）
   void noteOn(int noteIndex, int velocity) {
+    noteOn(noteIndex, velocity, 4);
+  }
+
+  // noteValue: 2/4/8 の音価に応じて、長さの異なるサンプルを鳴らす
+  // （2分=長め / 4分=標準 / 8分=短め）。シンバルは自然減衰のため停止は行わない。
+  void noteOn(int noteIndex, int velocity, int noteValue) {
     if (noteIndex == REST_NOTE) {
       return;
     }
@@ -33,14 +42,20 @@ class InstrumentUnit {
       return;
     }
 
-    // シンバルは一定音量のアクセント音として扱う。
-    // VELは受信・ログ表示するが、音量変化には反映しない。
-    cymbal.trigger();
+    // 音価で長さの異なるサンプルを選択（VELは音量には反映しない）
+    AudioSample s = cymbal4;
+    if (noteValue == 2) {
+      s = cymbal2;
+    } else if (noteValue == 8) {
+      s = cymbal8;
+    }
+    s.trigger();
 
     println(
       "[InstrumentUnit] Cymbal trigger" +
       " noteIndex=" + noteIndex +
-      " velocity=" + velocity
+      " velocity=" + velocity +
+      " noteValue=" + noteValue
     );
   }
 
@@ -53,176 +68,87 @@ class InstrumentUnit {
   }
 
   void close() {
-    if (cymbal != null) {
-      cymbal.close();
-    }
+    if (cymbal2 != null) cymbal2.close();
+    if (cymbal4 != null) cymbal4.close();
+    if (cymbal8 != null) cymbal8.close();
   }
 
   // ============================================================
-  // シンバル音を作る AudioSample版
+  // シンバル音を Processing で合成（密な非整数モードによる金属シマー主体）
+  //   ・1.8k〜約11kHz に多数（300本）の非整数モードを密に重ね、モード同士の
+  //     ビート（うなり）でシンバル特有の金属シマーを作る
+  //   ・倍音ごとに減衰を変え、明るい打音 → 金属の余韻へ移る
+  //   ・ノイズの洗いと打撃バーストでクラッシュの空気感・衝撃を加える
   // ============================================================
-  AudioSample createCymbal() {
-    int totalSamples =
-      int(
-        sampleRate *
-        duration
-      );
+  // lengthScale: 音価倍率（2分=1.8 / 4分=1.0 / 8分=0.45）。大きいほど長く鳴る。
+  AudioSample createCymbal(float lengthScale) {
+    float dur = 3.3f * lengthScale;                 // 2分≈5.9s / 4分≈3.3s / 8分≈1.5s
+    int totalSamples = int(sampleRate * dur);
+    float[] samples = new float[totalSamples];
 
-    float[] samples =
-      new float[
-        totalSamples
-      ];
+    int numPartials = 300;
+    float[] pa  = new float[numPartials];
+    float[] ph  = new float[numPartials];
+    float[] dph = new float[numPartials];
+    float[] env = new float[numPartials];
+    float[] est = new float[numPartials];
 
-    /*
-      シンバルは広い高域ノイズと金属的な倍音が重要。
-      GarageBand比較で強すぎないように、
-      音量・アタック・高域ノイズを少し抑えた版。
-    */
-    float[] freqs = {
-      2800,
-      3600,
-      4700,
-      6100,
-      7600,
-      9300,
-      11600,
-      14200
-    };
-
-    float[] phases =
-      new float[
-        freqs.length
-      ];
-
-    for (int i = 0; i < phases.length; i++) {
-      phases[i] =
-        random(
-          TWO_PI
-        );
+    for (int j = 0; j < numPartials; j++) {
+      float base = 1800.0f * pow(1.0060f, j);              // 1.8k〜約10.7kHz
+      float freq = base * (1.0f + random(-0.015f, 0.015f));
+      float shape = exp(-sq((freq - 4600.0f) / 2900.0f));  // 約4.6kHz中心の山なり（明るめ）
+      pa[j] = (0.18f + shape) * (0.5f + random(0.0f, 0.5f));
+      ph[j]  = random(TWO_PI);
+      dph[j] = TWO_PI * freq / sampleRate;
+      float drate = 0.6f + random(0.0f, 0.7f) + (freq / 9000.0f) * 1.1f;
+      env[j] = 1.0f;
+      est[j] = exp(-(drate / lengthScale) / sampleRate);  // 音価が長いほど減衰を遅く
     }
 
-    float last =
-      0;
+    float norm = sqrt((float) numPartials);
+    float lp = 0, last = 0;
 
     for (int i = 0; i < totalSamples; i++) {
-      float t =
-        i /
-        float(
-          sampleRate
-        );
+      float t = i / float(sampleRate);
+      float attack = min(1.0f, t / 0.004f);
 
-      // 一瞬で立ち上がるが、強すぎないよう少し丸める
-      float attack =
-        min(
-          1.0f,
-          t /
-          0.015f
-        );
+      // 密なモードの合計（ビートでシマーになる）
+      float metal = 0;
+      for (int j = 0; j < numPartials; j++) {
+        metal += pa[j] * sin(ph[j]) * env[j];
+        ph[j] += dph[j];
+        if (ph[j] > TWO_PI) ph[j] -= TWO_PI;
+        env[j] *= est[j];
+      }
+      metal /= norm;
 
-      // シンバルらしい長い余韻
-      float decay =
-        exp(
-          -t *
-          1.55f
-        );
+      // 中高域のノイズ洗い（空気感）
+      float white = random(-1, 1);
+      float hp = white - last;
+      last = white;
+      lp = lp + 0.50f * (hp - lp);
+      float band = lp * exp(-t * 1.3f / lengthScale);
 
-      float envelope =
-        attack *
-        decay;
+      // 明るいクラッシュの広がり＝「パーーン」と伸びる明るいウォッシュ（高域寄りで明るく）
+      float crash = (white * 0.25f + hp * 1.2f) * exp(-t * 5.0f / lengthScale);
 
-      // ホワイトノイズ
-      float noise =
-        random(
-          -1,
-          1
-        );
+      // 叩いた瞬間の鋭い衝撃「パッ」
+      float burst = white * exp(-t * 22.0f);
 
-      // 簡易ハイパス処理
-      float highNoise =
-        noise -
-        last *
-        0.94f;
+      float v = metal * 1.45f + band * 0.28f + crash * 1.9f + burst * 1.7f;
+      v *= attack;
 
-      last =
-        noise;
-
-      // 金属的な非整数倍音
-      float metal =
-        0;
-
-      for (int j = 0; j < freqs.length; j++) {
-        float wobble =
-          1.0f +
-          0.0025f *
-          sin(
-            TWO_PI *
-            5.0f *
-            t +
-            j
-          );
-
-        metal +=
-          sin(
-            TWO_PI *
-            freqs[j] *
-            wobble *
-            t +
-            phases[j]
-          ) /
-          freqs.length;
+      // 終端のクリック防止フェード
+      float tail = dur - t;
+      if (tail < 0.3f) {
+        v *= tail / 0.3f;
       }
 
-      // ノイズ主体、金属倍音を少し混ぜる
-      float v =
-        highNoise *
-        0.58f +
-        metal *
-        0.32f;
-
-      // 最初の打撃成分
-      float hit =
-        exp(
-          -t *
-          90.0f
-        ) *
-        random(
-          -1,
-          1
-        ) *
-        0.75f;
-
-      // 全体音量を調整
-      samples[i] =
-        (
-          v +
-          hit
-        ) *
-        envelope *
-        0.42f *
-        masterVolume;
-
-      // 音割れ防止
-      samples[i] =
-        constrain(
-          samples[i],
-          -1.0f,
-          1.0f
-        );
+      samples[i] = constrain(v * 0.7f * masterVolume, -1.0f, 1.0f);
     }
 
-    AudioFormat format =
-      new AudioFormat(
-        sampleRate,
-        16,
-        1,
-        true,
-        false
-      );
-
-    return minim.createSample(
-      samples,
-      format,
-      1024
-    );
+    AudioFormat format = new AudioFormat(sampleRate, 16, 1, true, false);
+    return minim.createSample(samples, format, 1024);
   }
+
 }
