@@ -38,9 +38,9 @@ enum State {
 // ───────────────────────────────────────────
 // 定数
 // ───────────────────────────────────────────
-const int BPM_MIN         = 40;
-const int BPM_MAX         = 160;
-const int BPM_DEFAULT     = 100;
+const int BPM_MIN         = 60;
+const int BPM_MAX         = 120;
+const int BPM_DEFAULT     = 60;
 
 const int SERVO_CENTER    = 30;
 const int SERVO_AMPLITUDE = 30;
