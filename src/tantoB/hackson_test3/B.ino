@@ -298,19 +298,24 @@ void led() {
 };
 
 void B_loop() {
-  led();
   readPhoto();
   detectPhotoBeat();
   if (beatDetected) {
     unsigned long now = millis();
     if (isPlaying) {
-      Serial.print("PLAYING");
+      Serial.println("PLAYING");
     }
     else {
-      Serial.print("BEAT");
+      Serial.println("BEAT");
     };
     isTempoChanged = false;
     updateTempoByPhoto();
+    Serial.print("now: ");
+    Serial.print(now);
+    Serial.print(", ema: ");
+    Serial.print(previousNextBeatTime);
+    Serial.print(", diff: ");
+    Serial.println(now - previousNextBeatTime);
     beatDetected = false;
     beatUpdated = true;
   };
