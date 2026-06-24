@@ -6,6 +6,8 @@ uint8_t note = 0; //音名インデックス（休符＝7）
 uint8_t vel = 0; //音の強さ（0~127）
 uint8_t note_long = 0; //音の長さ
 bool sounded = true; //音を鳴らしたか
+const int START_PLAY_THRESH = 0;
+int startBeatCount = 0;
 const uint8_t score[][3] = {
     {0, 100, 4},//ド　
     {1, 100, 4},//レ
@@ -75,45 +77,53 @@ void C_loop() {
         sounded = false;
         beatUpdated = false;
       };
-      if (note_long == 8 && millis() >= sendTime && !sounded) {
-        Serial.write(note_off);
-        Serial.write(note);
-        Serial.write(vel);
-        Serial.write(note_long);
-        noteIndex++;
-        sounded = true;
-        if (i == 0) {
-          i++;
+      if (millis() >= sendTime && !sounded) {
+        if (startBeatCount < START_PLAY_THRESH) {
+          startBeatCount++;
+          sounded = true;
         }
-        else if (i == 1) {
-          beatUpdated = true;
-          i = 0;
+        else {
+          if (note_long == 8) {
+            Serial.write(note_off);
+            Serial.write(note);
+            Serial.write(vel);
+            Serial.write(note_long);
+            noteIndex++;
+            sounded = true;
+            if (i == 0) {
+              i++;
+            }
+            else if (i == 1) {
+              beatUpdated = true;
+              i = 0;
+            };
+          };
+          if (note_long == 4){
+            Serial.write(note_off);
+            Serial.write(note);
+            Serial.write(vel);
+            Serial.write(note_long);
+            noteIndex++;
+            sounded = true;
+          };
+          if (note_long == 2){
+            if (i==0){
+              Serial.write(note_off);
+              Serial.write(note);
+              Serial.write(vel);
+              Serial.write(note_long);
+              sounded = true;
+              i++;          
+            }
+            else if (i == 1) {
+              sounded = true;
+              noteIndex++;
+              i = 0;
+            };
+          };
+          if (noteIndex == SCORE_LEN) noteIndex = 0;
         };
       };
-      if (note_long == 4 && millis() >= sendTime && !sounded){
-        Serial.write(note_off);
-        Serial.write(note);
-        Serial.write(vel);
-        Serial.write(note_long);
-        noteIndex++;
-        sounded = true;
-      };
-      if (note_long == 2 && millis() >= sendTime && !sounded){
-        if (i==0){
-          Serial.write(note_off);
-          Serial.write(note);
-          Serial.write(vel);
-          Serial.write(note_long);
-          sounded = true;
-          i++;          
-        }
-        else if (i == 1) {
-          sounded = true;
-          noteIndex++;
-          i = 0;
-        };
-      };
-      if (noteIndex == SCORE_LEN) noteIndex = 0;
     };
   };
 };
