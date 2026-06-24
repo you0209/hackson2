@@ -4,6 +4,8 @@
 ArduinoLEDMatrix matrix;
 
 // 共通変数
+
+int i=0;
 #define PHOTO_PIN A1
 #define IR_PIN A0
 #define LED_PIN 3

@@ -250,7 +250,7 @@ void updateState() {
 unsigned long prevmillis = 0;
 bool ledState = false;
 int ledCount = 0;
-const int CHANGE_THRESH = 15;
+const int CHANGE_THRESH = 0;
 bool test = false;
 
 void led() {
@@ -264,7 +264,7 @@ void led() {
     ledState = true;
     prevmillis = now;
   }
-  else if (ledCount >= CHANGE_THRESH && now - prevmillis >= 500 && !ledState) {
+  else if (ledCount >= CHANGE_THRESH && now - prevmillis >= 1000 && !ledState) {
     ledCount++;
     analogWrite(LED_PIN, 255);
     ledState = true;
@@ -286,6 +286,7 @@ void showMatrix() {
   uint8_t frame[8][12] = {};
   if (millis() < beatFlashUntil) frame[0][0] = 1; // BEAT → (0,0)
   frame[state][1] = 1;                             // state → col1, row=state番号
+  frame[i][2] = 1;
   matrix.renderBitmap(frame, 8, 12);
 }
 
