@@ -6,7 +6,7 @@ uint8_t note = 0; //音名インデックス（休符＝7）
 uint8_t vel = 0; //音の強さ（0~127）
 uint8_t note_long = 0; //音の長さ
 bool sounded = true; //音を鳴らしたか
-const int START_PLAY_THRESH = 0;
+const int START_PLAY_THRESH = 16;
 int startBeatCount = 0;
 const uint8_t score[][3] = {
     {0, 100, 4},//ド　
