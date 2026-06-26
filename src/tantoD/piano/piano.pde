@@ -111,7 +111,6 @@ class InstrumentUnit {
     ADSR hammerEnv;
 
     MoogFilter lpFilter;
-    BitCrush crusher;
     ADSR masterEnv;
 
     PianoInstrument(int noteIndex, float frequency, float maxAmp, int noteLength) {
@@ -165,29 +164,30 @@ class InstrumentUnit {
       // noteIndex 0(C4)→5(A4)。高音ほど余韻が短くなる係数。
       float regTail = 1.0f - 0.35f * (noteIndex / 5.0f);
 
-      // 基音：最も長く鳴り続ける。プロンプト + 長いアフターサウンド
-      // アフターサウンド（b）を厚め・長めにし、コンサートグランドの歌う持続感を出す
-      e1a = new ADSR(maxAmp * 0.55f, 0.002f, 0.70f * lengthScale, 0.0f, 0.30f * lengthScale);
+      // 基音：プロンプト（速い初期減衰）を 0.70→0.18s に短縮。
+      // 本物のピアノは打鍵後0.1〜0.2sで明るい成分が消えて余韻に移行する。
+      e1a = new ADSR(maxAmp * 0.55f, 0.002f, 0.18f * lengthScale, 0.0f, 0.30f * lengthScale);
       e1b = new ADSR(maxAmp * 0.36f, 0.004f, 12.50f * regTail * lengthScale, 0.0f, 0.95f * lengthScale);
 
-      // 2倍音：基音よりやや速い二段減衰
-      e2a = new ADSR(maxAmp * 0.34f, 0.002f, 0.55f * lengthScale, 0.0f, 0.25f * lengthScale);
+      // 2倍音
+      e2a = new ADSR(maxAmp * 0.34f, 0.002f, 0.14f * lengthScale, 0.0f, 0.25f * lengthScale);
       e2b = new ADSR(maxAmp * 0.20f, 0.003f, 7.80f * regTail * lengthScale, 0.0f, 0.80f * lengthScale);
 
       // 3倍音
-      e3a = new ADSR(maxAmp * 0.20f, 0.001f, 0.45f * lengthScale, 0.0f, 0.20f * lengthScale);
+      e3a = new ADSR(maxAmp * 0.20f, 0.001f, 0.11f * lengthScale, 0.0f, 0.20f * lengthScale);
       e3b = new ADSR(maxAmp * 0.11f, 0.002f, 4.80f * regTail * lengthScale, 0.0f, 0.60f * lengthScale);
 
-      // 4倍音：強打時により目立つよう velocityRate で強調
-      e4a = new ADSR(maxAmp * (0.11f + 0.07f * velocityRate), 0.001f, 0.30f * lengthScale, 0.0f, 0.15f * lengthScale);
+      // 4倍音
+      e4a = new ADSR(maxAmp * (0.11f + 0.07f * velocityRate), 0.001f, 0.08f * lengthScale, 0.0f, 0.15f * lengthScale);
       e4b = new ADSR(maxAmp * (0.04f + 0.04f * velocityRate), 0.001f, 1.40f * regTail * lengthScale, 0.0f, 0.25f * lengthScale);
 
-      // 5〜9倍音：高次。打鍵の輝きを担い速やかに減衰（高次ほど早く消えるのが自然）
-      e5 = new ADSR(maxAmp * (0.08f + 0.10f * velocityRate), 0.001f, 0.30f * lengthScale, 0.0f, 0.18f * lengthScale);
-      e6 = new ADSR(maxAmp * (0.05f + 0.07f * velocityRate), 0.001f, 0.20f * lengthScale, 0.0f, 0.15f * lengthScale);
-      e7 = new ADSR(maxAmp * (0.03f + 0.05f * velocityRate), 0.001f, 0.13f * lengthScale, 0.0f, 0.12f * lengthScale);
-      e8 = new ADSR(maxAmp * (0.02f + 0.04f * velocityRate), 0.001f, 0.09f * lengthScale, 0.0f, 0.10f * lengthScale);
-      e9 = new ADSR(maxAmp * (0.01f + 0.03f * velocityRate), 0.001f, 0.06f * lengthScale, 0.0f, 0.08f * lengthScale);
+      // 5〜9倍音：打鍵直後の輝きを加えるが、過剰にすると「てゅん」になるため控えめに。
+      // 振幅は低め・減衰は少し余裕を持たせて自然に消える。
+      e5 = new ADSR(maxAmp * (0.07f + 0.05f * velocityRate), 0.001f, 0.09f * lengthScale, 0.0f, 0.05f * lengthScale);
+      e6 = new ADSR(maxAmp * (0.05f + 0.04f * velocityRate), 0.001f, 0.07f * lengthScale, 0.0f, 0.04f * lengthScale);
+      e7 = new ADSR(maxAmp * (0.04f + 0.03f * velocityRate), 0.001f, 0.05f * lengthScale, 0.0f, 0.03f * lengthScale);
+      e8 = new ADSR(maxAmp * (0.03f + 0.02f * velocityRate), 0.001f, 0.04f * lengthScale, 0.0f, 0.02f * lengthScale);
+      e9 = new ADSR(maxAmp * (0.02f + 0.01f * velocityRate), 0.001f, 0.03f * lengthScale, 0.0f, 0.01f * lengthScale);
 
       h1a.patch(e1a).patch(mix);
       h1b.patch(e1b).patch(mix);
@@ -212,11 +212,12 @@ class InstrumentUnit {
         PINKノイズは白色雑音より低域成分が豊かで木やフェルトの質感に近い。
         強打ほど打鍵音を大きく、持続時間もわずかに長くする。
       */
-      // 打鍵音：ハンマーが弦を叩く「コツッ」という打鍵感。しっかり聴こえるよう強める。
+      // 打鍵音：ハンマーが弦を叩く「コン」という衝撃音。
+      // 振幅を大きく・アタックを鋭く。ここがピアノ認識の鍵。
       hammerNoise = new Noise(1.0f, Noise.Tint.PINK);
-      float hammerAmp  = maxAmp * (0.16f + 0.16f * velocityRate);
-      float hammerDecay = 0.009f + 0.011f * velocityRate;
-      hammerEnv = new ADSR(hammerAmp, 0.0003f, hammerDecay, 0.0f, 0.006f);
+      float hammerAmp   = maxAmp * (0.20f + 0.15f * velocityRate);
+      float hammerDecay = 0.006f + 0.008f * velocityRate;
+      hammerEnv = new ADSR(hammerAmp, 0.0001f, hammerDecay, 0.0f, 0.004f);
       hammerNoise.patch(hammerEnv).patch(mix);
 
       /*
@@ -224,26 +225,13 @@ class InstrumentUnit {
         ピアノは強打で倍音が増えて明るくなる特性がある。
         resonanceは低めに保ちナチュラルな響きを維持。
       */
-      // カットオフをやや下げ、コンサートグランドらしい暖かい音色に（明るすぎを抑える）
-      float filterFreq = 3000f + 4000f * velocityRate;
-      lpFilter = new MoogFilter(filterFreq, 0.04f, MoogFilter.Type.LP);
+      // LPF：明るさをベロシティで可変。BitCrushは除去（デジタル感の原因）。
+      float filterFreq = 5000f + 5000f * velocityRate;
+      lpFilter = new MoogFilter(filterFreq, 0.03f, MoogFilter.Type.LP);
 
-      /*
-        16bit Crush：音量のまとまりを保ちつつ微細な量子化感を加える。
-      */
-      crusher = new BitCrush(16, 44100);
-
-      /*
-        マスターエンベロープ：
-        音量の時間変化は各倍音の二段減衰ADSRが担うため、マスターは
-        「弦の鳴りをそのまま通し、離鍵でダンパーが弦を止める」ゲートとして働かせる。
-        sustain=1.0 で倍音の自然減衰を素通しし、release を短め（約0.18秒）に
-        することで、鍵を離すとペダルなしのピアノのように素早く音が止まる。
-      */
       masterEnv = new ADSR(1.0f, 0.001f, 0.01f, 1.0f, 0.50f * lengthScale);
 
       mix.patch(lpFilter)
-         .patch(crusher)
          .patch(masterEnv);
     }
 
