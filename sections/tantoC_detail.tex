@@ -45,10 +45,10 @@ USB Type-Cケーブル & 5 & 各子機とPC缶のSerial通信 \\ \hline
         breaklines=true
     ]
 const uint8_t score[][3] = {
-   {0, 100, 1},   //ド
-   {1, 100, 1},   //レ
-   {2, 100, 1},   //ミ
-   {3, 100, 1},   //ファ
+   {0, 100, 4},   //ド
+   {1, 100, 4},   //レ
+   {2, 100, 4},   //ミ
+   {3, 100, 4},   //ファ
    // ... 以下省略（前章節分を定義）
    };
    
@@ -109,33 +109,6 @@ const uint8_t score[][3] = {
 \end{table}
 \FloatBarrier
 
-テンポ管理は小節カウンタ（ソースコード\ref{beat}）による自立管理を行う．定義例はソースコード\ref{テンポ切替}の通りである．
-\begin{figure}[H]
-\renewcommand{\lstlistingname}{ソースコード}
-    \begin{lstlisting}[
-        language=C++,
-        caption={テンポ切替定数},
-        label=テンポ切替,
-        escapechar=@,
-        frame=single,
-        basicstyle=\ttfamily\small,
-        breaklines=true
-    ]
-    
-    const uint16_t TEMPO_SLOW = 750;  //80bpm->拍間隔750ms
-    
-    const uint16_t TEMPO_FAST = 577;  //104bpm->拍間隔577ms
-    
-    const uint8_t TEMPO_CHANGE_BAR = 15;  //15小節目からTEMPO_FASTへ切替
-    
-    uint16_t currentInterval = TEMPO_SLOW;  //現在の拍間隔[ms]
-    uint8_t barCount = 0;  //現在の小説カウンタ
-    
-   \end{lstlisting}
-\end{figure}
-
-
-
 
 \subsubsection{オブジェクト設計（クラス図）}
 
@@ -148,10 +121,13 @@ const uint8_t score[][3] = {
 \hline
 型 & 変数名 & 用途 \\\hline \hline
 int & noteIndex = 0 & 現在の音符ポインタ \\ \hline
-int & beatCount = 0 & 経過拍数 \\ \hline
-int & remainBeats = 0 & 現在の音符の残り拍数 \\ \hline
-bool & playing = false & 演奏フラグ（輝度キュー受信後に"true"になる） \\ \hline
-bool & fermata = false & フェルマータ中フラグ \\ \hline
+usingned long & sendTime & シリアル通信を行う絶対時間 \\ \hline
+uint8_t & note_off = 1 & 前の音の終了 \\ \hline
+uint8_t & note = 0 & 音名インデックス（休符=6) \\ \hline
+uint8_t & vel = 0 & 音の強さ（0~127) \\ \hline
+uint8_t & note_long = 0 & 音の長さ（2,4,8) \\ \hline
+bool & sounded = true & 音を鳴らしたか \\ \hline
+
   \end{tabular}  
 \end{table}
 
@@ -163,7 +139,7 @@ bool & fermata = false & フェルマータ中フラグ \\ \hline
 
 \subsubsection{関数設計}
 
-本システムで実装する関数シグネチャと引数，戻り値，処理内容の一覧について表\ref{functions}に記す．特に複雑な関数（onBeatDetected()，advanceNote()）のフローチャートをそれぞれ図\ref{onBeatDetected}，\ref{advanceNote}に示す．
+本システムで実装する関数シグネチャと引数，戻り値，処理内容の一覧について表\ref{functions}に記す．
 
 
 % プリアンブルに \usepackage{tabularx} が必要
@@ -175,35 +151,10 @@ bool & fermata = false & フェルマータ中フラグ \\ \hline
     \hline
     関数名 & 引数 & 戻り値 & 処理内容 \\ \hline \hline
  %   bool detectBeat() & なし（void）&bool（ true / false )& フォトトランジスタで親機LEDを検出しtrueを返す．そうでない場合はfalseを返す． \\ \hline
-    void onBeatDetected() & なし（void）& なし（void）& 拍検出時の処理：輝度キュー受信によるスタートフラグ確認，テンポ切替，音符更新・送信，前の音の停止の送信を実行 \\ \hline
-    void advanceNote() & なし（void）& なし（void）& 残り拍数を減らし，0になったらnoteIndexを進める \\ \hline
-    void sendCurrentNote() & なし（void）& なし（void）& score[noteIndex] からNOTE ON パケットを生成し送信する \\ \hline
-    void sendNoteOn(uint8\_t note, uint8\_t vel) &uint8\_ note：音名インデックス（0~127　休符=255）　uint8\_vel：音の強さ（0~127）& なし（void）& 演奏用ArduinoからProcessingへシリアル送信する \\ \hline
-    void onFermata() & なし（void）& なし（void）& フェルマータ受信時，次の拍を検出するまでプログラムを停止する \\ \hline
-    void checkTempoChange() & なし（void）& なし（void）& barCountに応じてcurrentIntervalを切り替える \\ \hline
+    unsigned long sendTime_set() & usingned long nextBeatTime& sendTime& 引数（次の拍の予測絶対時間）に補正値をかけて返す \\ \hline
+
   \end{tabularx}  
 \end{table}
-
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\linewidth, keepaspectratio]{figures/tantoC/onBeatDetected_drawio.pdf}
-    \caption{フローチャート：onBeatDetected()}
-    \label{onBeatDetected}
-\end{figure}
-
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.6\linewidth, keepaspectratio]{figures/tantoC/advanceNote_drawio.pdf}
-    \caption{フローチャート：advanceNote()}
-    \label{advanceNote}
-\end{figure}
-
-
-
-
-\FloatBarrier
 
 
 
