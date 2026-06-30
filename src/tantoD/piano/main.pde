@@ -14,8 +14,15 @@ final String PART_NAME = "Piano";
 // 音量。元のピアノ音色を保つため 1.0 にする
 float masterVolume = 1.0f;
 
+// ---- マスターボリュームスライダー ----
+float masterVol = 1.0f;     // 0.0〜1.0（out.setGain で出力全体に反映）
+final int SLD_X = 150;      // トラック左端X
+final int SLD_W = 280;      // トラック幅
+final int SLD_Y = 348;      // トラックのY
+boolean dragging = false;   // スライダー操作中フラグ
+
 void setup() {
-  size(760, 320);
+  size(760, 380);
   pixelDensity(1);
 
   minim = new Minim(this);
@@ -24,6 +31,9 @@ void setup() {
 
   instrument = new InstrumentUnit(out);
   instrument.setMasterVolume(masterVolume);
+
+  // 初期マスター音量を出力ゲインに反映
+  out.setGain(linToDb(masterVol));
 
   comm = new CommunicationManager(this, instrument);
 
@@ -39,6 +49,7 @@ void draw() {
 
   drawWaveform();
   drawInfo();
+  drawSlider();
 }
 
 void drawWaveform() {
@@ -88,6 +99,69 @@ void drawInfo() {
     260,
     285
   );
+}
+
+// マスターボリュームスライダーの描画
+void drawSlider() {
+  fill(255);
+  text("MASTER VOL", 20, SLD_Y + 5);
+
+  // トラック（背景）
+  strokeWeight(4);
+  stroke(70);
+  line(SLD_X, SLD_Y, SLD_X + SLD_W, SLD_Y);
+
+  // 現在値までの塗り
+  float kx = SLD_X + masterVol * SLD_W;
+  stroke(80, 220, 120);
+  line(SLD_X, SLD_Y, kx, SLD_Y);
+
+  // ノブ
+  noStroke();
+  fill(80, 220, 120);
+  ellipse(kx, SLD_Y, 16, 16);
+
+  // パーセント表示
+  fill(255);
+  text(int(masterVol * 100) + " %", SLD_X + SLD_W + 20, SLD_Y + 5);
+
+  strokeWeight(1);
+}
+
+// スライダーの当たり判定（トラック周辺）
+boolean overSlider(int mx, int my) {
+  return mx >= SLD_X - 12 && mx <= SLD_X + SLD_W + 12 && abs(my - SLD_Y) <= 14;
+}
+
+// マウスX → 音量に変換して出力ゲインへ反映
+void setVolumeFromMouse(int mx) {
+  masterVol = constrain((mx - SLD_X) / float(SLD_W), 0.0f, 1.0f);
+  out.setGain(linToDb(masterVol));
+}
+
+void mousePressed() {
+  if (overSlider(mouseX, mouseY)) {
+    dragging = true;
+    setVolumeFromMouse(mouseX);
+  }
+}
+
+void mouseDragged() {
+  if (dragging) {
+    setVolumeFromMouse(mouseX);
+  }
+}
+
+void mouseReleased() {
+  dragging = false;
+}
+
+// 線形音量（0.0〜1.0）→ デシベル。無音付近は -80dB にクランプ。
+float linToDb(float lin) {
+  if (lin <= 0.0001f) {
+    return -80.0f;
+  }
+  return 20.0f * (log(lin) / log(10.0f));
 }
 
 void serialEvent(Serial p) {
