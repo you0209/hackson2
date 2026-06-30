@@ -8,6 +8,7 @@ uint8_t note_long = 0; //音の長さ
 bool sounded = true; //音を鳴らしたか
 const int START_PLAY_THRESH = 8;
 int startBeatCount = 0;
+int i = 0;
 const uint8_t score[][3] = {
     {0, 100, 4},//ド　
     {1, 100, 4},//レ
@@ -70,11 +71,13 @@ void C_loop() {
       vel  = score[noteIndex][1];
       note_long = score[noteIndex][2];
       if (beatUpdated && sounded) {
-        sendTime = sendTime_set(nextBeatTime);
-        if (note_long == 8 && i == 1) {
-          sendTime = currentBeatTime + ( sendTime - currentBeatTime ) * 0.5;
+        if (isPlaying) {
+          sendTime = sendTime_set(nextBeatTime);
+          if (note_long == 8 && i == 1) {
+            sendTime = currentBeatTime + ( sendTime - currentBeatTime ) * 0.5;
+          };
+          sounded = false;
         };
-        sounded = false;
         beatUpdated = false;
       };
       if (millis() >= sendTime && !sounded) {
