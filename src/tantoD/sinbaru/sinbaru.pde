@@ -1,5 +1,5 @@
 class InstrumentUnit {
-  Minim minim;
+  AudioOutput out;
 
   final int REST_NOTE = 6;
 
@@ -8,11 +8,12 @@ class InstrumentUnit {
   float masterVolume = 1.0f;
 
   // 音価別の3サンプル（2分=長め / 4分=標準 / 8分=短め）。
-  // 音源ファイルは使わず、FM（位相変調）合成で生成する。
-  AudioSample cymbal2, cymbal4, cymbal8;
+  // 事前レンダリングした波形を Sampler(UGen) に載せ、他の楽器と同じく out へ patch する
+  // （インターフェース統一）。音源ファイルは使わず、モーダル加算合成で生成する。
+  Sampler cymbal2, cymbal4, cymbal8;
 
-  InstrumentUnit(Minim minim) {
-    this.minim = minim;
+  InstrumentUnit(AudioOutput out) {
+    this.out = out;
     cymbal2 = createCymbal(1.8f);   // 2分音符：長め
     cymbal4 = createCymbal(1.0f);   // 4分音符：標準
     cymbal8 = createCymbal(0.45f);  // 8分音符：短め
@@ -20,10 +21,6 @@ class InstrumentUnit {
 
   void setMasterVolume(float volume) {
     masterVolume = constrain(volume, 0.0f, 1.0f);
-  }
-
-  AudioSample getCymbalSample() {
-    return cymbal4;
   }
 
   // キーボード確認用：音価指定なし（四分音符として発音）
@@ -43,20 +40,20 @@ class InstrumentUnit {
       return;
     }
 
-    // 音価で長さの異なるサンプルを選択（VELは下の setGain で音量に反映）
-    AudioSample s = cymbal4;
+    // 音価で長さの異なるサンプルを選択
+    Sampler s = cymbal4;
     if (noteValue == 2) {
       s = cymbal2;
     } else if (noteValue == 8) {
       s = cymbal8;
     }
 
-    // マスター音量 × ベロシティを発音ゲインとして反映する。
-    // サンプルは neutral（VEL=最大・音量=1.0 相当）でレンダリング済みのため、
-    // VEL=127・masterVolume=1.0 のとき gain=0dB で従来と同じ音量になる。
+    // マスター音量 × ベロシティを発音振幅に反映（他楽器と同じ考え方。線形 0〜1）。
+    // サンプルは neutral（フル音量相当）でレンダリング済みのため、
+    // VEL=127・masterVolume=1.0 のとき amplitude=1.0 で従来と同じ音量になる。
     float velocityRate = constrain(velocity / 127.0f, 0.0f, 1.0f);
-    float linGain = masterVolume * velocityRate;
-    s.setGain(linearToDb(linGain));
+    float amp = constrain(masterVolume * velocityRate, 0.0f, 1.0f);
+    s.amplitude.setLastValue(amp);
     s.trigger();
 
     println(
@@ -64,16 +61,8 @@ class InstrumentUnit {
       " noteIndex=" + noteIndex +
       " velocity=" + velocity +
       " noteValue=" + noteValue +
-      " gainDb=" + nf(linearToDb(linGain), 0, 1)
+      " amp=" + nf(amp, 0, 3)
     );
-  }
-
-  // 線形振幅（0.0〜1.0）→ デシベル。無音付近は -80dB にクランプする。
-  float linearToDb(float lin) {
-    if (lin <= 0.0001f) {
-      return -80.0f;
-    }
-    return 20.0f * (log(lin) / log(10.0f));
   }
 
   void noteOff(int noteIndex) {
@@ -85,9 +74,9 @@ class InstrumentUnit {
   }
 
   void close() {
-    if (cymbal2 != null) cymbal2.close();
-    if (cymbal4 != null) cymbal4.close();
-    if (cymbal8 != null) cymbal8.close();
+    if (cymbal2 != null) cymbal2.unpatch(out);
+    if (cymbal4 != null) cymbal4.unpatch(out);
+    if (cymbal8 != null) cymbal8.unpatch(out);
   }
 
   // ============================================================
@@ -98,12 +87,13 @@ class InstrumentUnit {
   //     ＝高域ほど速く減衰し、低中域（1.5〜3kHz）が長く残る。この「降下」がクラッシュの核心。
   //   ・アタックは明るく密（やや雑音的, flat≈0.16）→ 余韻は音程的な低中域へ。
   //   設計：
-  //   ・1.3〜14kHz に多数(≈420)の不規則モードを配置（密度＝シマー／賑わい）。
+  //   ・1.7〜16kHz に多数(≈420)の不規則モードを配置（密度＝シマー／賑わい）。
   //   ・★周波数依存の減衰（高域=速い/低域=遅い）で重心を降下させる＝静的ノイズにならない核心。
   //   ・低域の打撃「ドッ」＋極短のブライトノイズでアタックの衝撃。持続ノイズは入れない。
+  //   生成した波形は MultiChannelBuffer→Sampler に載せ、out へ patch して trigger() で鳴らす。
   // ============================================================
   // lengthScale: 音価倍率（2分=1.8 / 4分=1.0 / 8分=0.45）。大きいほど長く鳴る。
-  AudioSample createCymbal(float lengthScale) {
+  Sampler createCymbal(float lengthScale) {
     // ---- チューニングノブ ----
     // 各値は本物(sinnbaru.wav)のスペクトル重心カーブにPythonでフィットさせたもの
     final int   NUM         = 420;     // モード数。多いほど密＝賑やか（少ないとベル化する）
@@ -192,12 +182,14 @@ class InstrumentUnit {
         v *= tail / 0.3f;
       }
 
-      // 音量・VELはここで焼き込まず、発音時に setGain() で反映する
-      // （焼き込むと起動後の音量スライダーが効かないため）。
       samples[i] = constrain(v * OUT_GAIN, -1.0f, 1.0f);
     }
 
-    AudioFormat format = new AudioFormat(sampleRate, 16, 1, true, false);
-    return minim.createSample(samples, format, 1024);
+    // 生成波形を Sampler(UGen) に載せ、out へ patch する（他楽器と同じ経路に統一）
+    MultiChannelBuffer buf = new MultiChannelBuffer(totalSamples, 1);
+    buf.setChannel(0, samples);
+    Sampler s = new Sampler(buf, sampleRate, 4);  // maxVoices=4（重ね鳴り対応）
+    s.patch(out);
+    return s;
   }
 }

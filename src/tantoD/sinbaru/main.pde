@@ -1,8 +1,9 @@
 import processing.serial.*;
 import ddf.minim.*;
-import javax.sound.sampled.AudioFormat;
+import ddf.minim.ugens.*;
 
 Minim minim;
+AudioOutput out;
 
 CommunicationManager comm;
 InstrumentUnit instrument;
@@ -14,9 +15,10 @@ void setup() {
   pixelDensity(1);
 
   minim = new Minim(this);
+  out = minim.getLineOut(Minim.STEREO, 1024);
 
-  // シンバルは AudioSample 方式なので Minim を渡す
-  instrument = new InstrumentUnit(minim);
+  // 他の楽器と同じく out（AudioOutput）を渡す（Sampler を out へ patch する）
+  instrument = new InstrumentUnit(out);
   instrument.setMasterVolume(masterVolume);
 
   comm = new CommunicationManager(this, instrument);
@@ -37,11 +39,11 @@ void draw() {
 
 void drawInfo() {
   fill(255);
-  text("Sound_Cymbal — AudioSample Version", 20, 30);
+  text("Sound_Cymbal — Modal Synthesis (Sampler)", 20, 30);
   text("4Byte Packet: NOTE_OFF / NOTE / VEL / LONG", 20, 55);
   text("NOTE: 0-5 = Cymbal Trigger   6 = REST", 20, 80);
   text("Keyboard Test: P = Cymbal", 20, 105);
-  text("AudioSample: noise + metal partials + hit + attack/decay", 20, 130);
+  text("Modal additive (~420 modes) -> Sampler -> out", 20, 130);
 
   if (comm.isConnected()) {
     fill(80, 220, 120);
@@ -63,23 +65,18 @@ void drawInfo() {
 }
 
 void drawWaveform() {
-  AudioSample sample = instrument.getCymbalSample();
-
-  if (sample == null) {
-    return;
-  }
-
+  // 出力（out）の波形を描画（他の楽器と同じ方式）
   stroke(255);
 
-  for (int i = 0; i < sample.bufferSize() - 1; i++) {
-    float x1 = map(i, 0, sample.bufferSize(), 0, width);
-    float x2 = map(i + 1, 0, sample.bufferSize(), 0, width);
+  for (int i = 0; i < out.bufferSize() - 1; i++) {
+    float x1 = map(i, 0, out.bufferSize() - 1, 0, width);
+    float x2 = map(i + 1, 0, out.bufferSize() - 1, 0, width);
 
     line(
       x1,
-      190 - sample.left.get(i) * 80,
+      190 - out.left.get(i) * 80,
       x2,
-      190 - sample.left.get(i + 1) * 80
+      190 - out.left.get(i + 1) * 80
     );
   }
 }
@@ -102,6 +99,10 @@ void keyPressed() {
 void stop() {
   if (instrument != null) {
     instrument.close();
+  }
+
+  if (out != null) {
+    out.close();
   }
 
   if (minim != null) {
