@@ -1,0 +1,49 @@
+% =============================================================
+% 第1章 はじめに 章本体
+% reports.tex から \input される．
+% =============================================================
+
+本文書は，Arduinoオーケストラ開発プロジェクトにおける作業ログ・進捗・成果指標を
+一括して報告する文書である．課題4〜9に対応する6章（本章を除く第2章〜第7章）で構成され，
+各章で以下の内容を記載する．
+
+\begin{description}
+  \item[第2章 人員ごとの作業時間統計] 各担当の累計作業時間と作業（タスク）ごとの内訳．
+  \item[第3章 WBS要素ごとの作業時間統計] WBSの全タスクごとの累計作業時間．
+  \item[第4章 作業の進捗率（WBS・ガントチャート）] WBSタスクごとの進捗率と，金曜日（提出日）基準のガントチャート．
+  \item[第5章 技術成熟度レベルTRLの推移] FBS各機能のTRL評価．本プロジェクトでは試作初期段階のため TRL 1〜4 の4段階で評価する．
+  \item[第6章 技術性能指標TPMの推移] TPM項目の測定推移．
+  \item[第7章 テストの実施日と結果] 単体・結合・システムテストの実施結果．
+\end{description}
+
+各章末尾には「特記事項」セクションを設け，章ごとの補足情報や注意事項を記載する．
+
+\section{GitHub による文書・ソースコード管理}
+
+本プロジェクトの全文書・ソースコードは，GitHub のリポジトリ
+（\url{https://github.com/you0209/hackson2}）で集中管理している．
+作業時はメンバー全員が同一リポジトリの \texttt{main} ブランチに対して
+\texttt{git pull}・\texttt{git commit}・\texttt{git push} を行い，変更を共有する．
+主要なフォルダ構成を以下に示す．
+
+\begin{description}
+  \item[\texttt{management\_plan.tex}] マネジメント計画書（課題1）と基本設計書・詳細設計書（課題2）の親文書．
+  \item[\texttt{reports.tex}] 本文書（課題4〜9）の親文書．
+  \item[\texttt{sections/}] 章本体ファイル（共通章・各担当章・変更履歴の直近版）．
+  \item[\texttt{revision\_history3/}] 課題3 用の独立した変更履歴文書．プロジェクト開始から現在までの全期間の変更履歴を蓄積する．
+  \item[\texttt{introduction/}] 本章（第1章 はじめに）の章本体フォルダ．
+  \item[\texttt{work\_hours\_member4 / work\_hours\_wbs5 / progress6 / trl\_history7 / tpm\_history8 / test\_results9}] 課題4〜9 の各章本体フォルダ．本文書から \texttt{\textbackslash input} で読み込まれる．
+  \item[\texttt{src/tantoA, tantoB, tantoC, tantoD}] 各担当の Arduino・Processing 実装ソースコード．
+  \item[\texttt{figures/}] 全文書で参照する図ファイル（drawio / PDF / PNG / xlsx）．
+\end{description}
+
+\section{変更履歴の2系統運用}
+
+変更履歴は2系統で運用している．計画書・設計書（課題1・2）に含まれる変更履歴章は
+\texttt{sections/changelog\_current.tex} を参照しており，提出ごとにリセットされる．
+一方，課題3として独立提出する変更履歴文書は \texttt{revision\_history3/sections/changelog.tex} を
+参照し，提出時に直近版から累積版へ転記する運用とすることで，全期間の履歴を保持している．
+
+\section{特記事項}
+
+% 第1章に関する補足情報や注意事項をここに記載する．

@@ -45,15 +45,22 @@
 % ガント進捗用 色定義・セル塗りマクロ
 % （progress6/progress.tex のガント表で使用）
 % =============================================================
-\definecolor{progLow}{HTML}{F4ABAB}    % 80\%未満
-\definecolor{progMid}{HTML}{FFD966}    % 80\%以上100\%未満
-\definecolor{progDone}{HTML}{70AD47}   % 100\%
-\definecolor{progNone}{HTML}{D9D9D9}   % 未着手・未記入
+% 24G1101.tex 互換 + 修正中（新規）
+\definecolor{cImpl}{HTML}{FFD966}    % 実装フェーズ（予定）
+\definecolor{cTest}{HTML}{FFA040}    % テストフェーズ（予定）
+\definecolor{cBuf}{HTML}{FFF0C0}     % バッファー週マーカー
+\definecolor{cDone}{HTML}{66BB6A}    % 完了（100\%）
+\definecolor{cDelay}{HTML}{FFAB91}   % 後ろ倒し・ブロック
+\definecolor{cProg}{HTML}{90CAF9}    % 進行中（1〜79\%）
+\definecolor{cFix}{HTML}{FFC107}     % 修正中（80\%以上100\%未満）新規
 
-\newcommand{\pLow}{\cellcolor{progLow}}
-\newcommand{\pMid}{\cellcolor{progMid}}
-\newcommand{\pDone}{\cellcolor{progDone}}
-\newcommand{\pNone}{\cellcolor{progNone}}
+\newcommand{\cI}{\cellcolor{cImpl}}
+\newcommand{\cT}{\cellcolor{cTest}}
+\newcommand{\cB}{\cellcolor{cBuf}}
+\newcommand{\cDn}{\cellcolor{cDone}}
+\newcommand{\cDl}{\cellcolor{cDelay}}
+\newcommand{\cP}{\cellcolor{cProg}}
+\newcommand{\cFx}{\cellcolor{cFix}}
 
 % =============================================================
 \title{Arduinoオーケストラ}
@@ -79,7 +86,11 @@
 \tableofcontents \thispagestyle{empty}
 
 % =============================================================
-\chapter{人員ごとの作業時間統計}\setcounter{page}{1}
+\chapter{はじめに}\setcounter{page}{1}
+\input{introduction/introduction}
+
+% =============================================================
+\chapter{人員ごとの作業時間統計}
 \input{work_hours_member4/work_hours_member}
 
 % =============================================================

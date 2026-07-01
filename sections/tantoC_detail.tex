@@ -122,10 +122,10 @@ const uint8_t score[][3] = {
 型 & 変数名 & 用途 \\\hline \hline
 int & noteIndex = 0 & 現在の音符ポインタ \\ \hline
 usingned long & sendTime & シリアル通信を行う絶対時間 \\ \hline
-uint8_t & note_off = 1 & 前の音の終了 \\ \hline
-uint8_t & note = 0 & 音名インデックス（休符=6) \\ \hline
-uint8_t & vel = 0 & 音の強さ（0~127) \\ \hline
-uint8_t & note_long = 0 & 音の長さ（2,4,8) \\ \hline
+uint8\_t & note\_off = 1 & 前の音の終了 \\ \hline
+uint8\_t & note = 0 & 音名インデックス（休符=6) \\ \hline
+uint8\_t & vel = 0 & 音の強さ（0~127) \\ \hline
+uint8\_t & note\_long = 0 & 音の長さ（2,4,8) \\ \hline
 bool & sounded = true & 音を鳴らしたか \\ \hline
 
   \end{tabular}  
@@ -151,7 +151,7 @@ bool & sounded = true & 音を鳴らしたか \\ \hline
     \hline
     関数名 & 引数 & 戻り値 & 処理内容 \\ \hline \hline
  %   bool detectBeat() & なし（void）&bool（ true / false )& フォトトランジスタで親機LEDを検出しtrueを返す．そうでない場合はfalseを返す． \\ \hline
-    unsigned long sendTime_set() & usingned long nextBeatTime& sendTime& 引数（次の拍の予測絶対時間）に補正値をかけて返す \\ \hline
+    unsigned long sendTime\_set() & usingned long nextBeatTime & sendTime & 引数（次の拍の予測絶対時間）に補正値をかけて返す \\ \hline
 
   \end{tabularx}  
 \end{table}
