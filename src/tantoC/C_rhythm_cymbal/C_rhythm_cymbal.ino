@@ -76,7 +76,7 @@ const uint8_t score[][3] = {
 const int SCORE_LEN = sizeof ( score ) / sizeof ( score[0]);
 
 unsigned long sendTime_set(unsigned long nextBeatTime) {//担当Bよりより出された次の拍の予測絶対時間に補正値をかける
-  unsigned long sendTime = nextBeatTime;
+  unsigned long sendTime = nextBeatTime - 235;
   return sendTime;
 }
 
