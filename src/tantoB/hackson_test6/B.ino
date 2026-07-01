@@ -174,6 +174,8 @@ void showMatrix() {
   uint8_t frame[8][12] = {};
   if (millis() < beatFlashUntil) frame[0][0] = 1;
   frame[state][1] = 1;
+  if (!isPlaying) frame[0][2] = 1;
+  else frame[1][2] = 1;
   matrix.renderBitmap(frame, 8, 12);
 };
 
