@@ -180,7 +180,6 @@ void B_loop() {
   photoISR();
   if (beatDetected) {
     detectCount++;
-    Serial.println("detect");
     if (state == PREBEAT) prebeatCount++;
     beatFlashUntil  = millis() + BEAT_FLASH_MS;
     readColor();
