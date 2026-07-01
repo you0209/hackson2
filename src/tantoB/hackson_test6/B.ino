@@ -175,7 +175,6 @@ void showMatrix() {
 
 // ===== メインループ =====
 void B_loop() {
-  led();
   photoISR();
   if (beatDetected) {
     beatDetected = false;
