@@ -1,10 +1,12 @@
 // ===== 変数定義 =====
 //カラーセンサ
-char*       colorName       = "Unknown";
+const char* colorName       = "Unknown";
 const char* PLAY_COLOR_NAME = "Red";
 
 // フォトトランジスタ
 volatile bool beatDetected = false;
+bool high = false;
+bool stateHigh = false;
 
 // EMA
 float         estimatedBeatInterval = 1000.0f;
@@ -22,13 +24,24 @@ const int              MISSED_BEAT_THRESH = 3;
 // ===== 関数 =====
 // フォトトランジスタの割り込み
 void photoISR() {
-  beatDetected    = true;
-  currentBeatTime = millis();
-  lastBeatTime    = currentBeatTime;
+  high = digitalRead(PHOTO_PIN);
+  if (high) {
+    if (!stateHigh) {
+      beatDetected    = true;
+      currentBeatTime = millis();
+      lastBeatTime    = currentBeatTime;
+      stateHigh = true;
+    };
+  }
+  else stateHigh = false;
+};
+
+void readPhoto() {
+  int raw = analogRead(PHOTO_PIN);
 };
 
 // rgbより色を判定
-char* detectColor(float r, float g, float b) {
+const char* detectColor(float r, float g, float b) {
   struct ColorRef { float r, g, b; const char* name; };
   static const ColorRef refs[] = {
     {0.975f, 0.222f, 0.017f, "Red"},
@@ -42,7 +55,7 @@ char* detectColor(float r, float g, float b) {
   float mag       = sqrt(r*r + g*g + b*b);
   float nr        = r / mag, ng = g / mag, nb = b / mag;
   float bestScore = -1;
-  char* bestName  = "Unknown";
+  const char* bestName  = "Unknown";
   for (const auto& ref : refs) {
     float score = nr*ref.r + ng*ref.g + nb*ref.b;
     if (score > bestScore) {
@@ -87,18 +100,21 @@ void updateState() {
       if (strcmp(colorName, START_COLOR_NAME) == 0) {
         prebeatCount = 0;
         state        = PREBEAT;
+        Serial.println("PREBEAT");
       };
       break;
     };
     case PREBEAT: {
       if (prebeatCount >= PREBEAT_THRESH) {
         state = PLAYING;
+        Serial.println("PLAYING");
       };
       break;
     };
     case PLAYING: {
       if (millis() - lastBeatTime > (unsigned long)(estimatedBeatInterval * MISSED_BEAT_THRESH)) {
         state = IDLE;
+        Serial.println("IDLE");
       };
       break;
     };
@@ -121,20 +137,30 @@ const Color COLORS[] = {
   {0x7F, 0x00, 0x7F, "Magenta"},
   {0x7F, 0x7F, 0x7F, "White  "},
 };
-const int           COLOR_COUNT     = sizeof(COLORS) / sizeof(COLORS[0]);
-const unsigned long COLOR_INTERVAL  = 2000;
-unsigned long       lastColorChange = 0;
+const int           COLOR_COUNT       = sizeof(COLORS) / sizeof(COLORS[0]);
+const unsigned long COLOR_INTERVAL    = 1000;
+unsigned long       lastColorChange   = 0;
 int                 currentColorIndex = 0;
+bool                ledHigh           = false;
 
 // led操作
 void led() {
   unsigned long now = millis();
-  if (now - lastColorChange >= COLOR_INTERVAL) {
-    currentColorIndex = (currentColorIndex + 1) % COLOR_COUNT;
-    setLEDColor(COLORS[currentColorIndex].r,
-                COLORS[currentColorIndex].g,
-                COLORS[currentColorIndex].b);
-    lastColorChange = now;
+  if (!ledHigh) {
+    if (now - lastColorChange >= COLOR_INTERVAL) {
+      currentColorIndex = (currentColorIndex + 1) % COLOR_COUNT;
+      setLEDColor(COLORS[currentColorIndex].r,
+                  COLORS[currentColorIndex].g,
+                  COLORS[currentColorIndex].b);
+      lastColorChange = millis(); // ← setLEDColor後に取る
+      ledHigh = true;
+    };
+  } else {
+    if (now - lastColorChange >= 10) {
+      setLEDColor(0x00, 0x00, 0x00);
+      lastColorChange = millis(); // ← こっちも
+      ledHigh = false;
+    };
   };
 };
 
@@ -152,13 +178,21 @@ void showMatrix() {
 
 // ===== メインループ =====
 void B_loop() {
+  led();
+  photoISR();
   if (beatDetected) {
+    beatDetected = false;
+    if (state == PREBEAT) prebeatCount++;
     beatFlashUntil  = millis() + BEAT_FLASH_MS;
     readColor();
-    if (!isPlaying && strcmp(colorName, PLAY_COLOR_NAME) == 0) isPlaying = true;
-    updateTempoByPhoto();
-    beatDetected = false;
-    beatUpdated  = true;
+    Serial.println(colorName);
+    if (state != IDLE) {
+      if (!isPlaying && strcmp(colorName, PLAY_COLOR_NAME) == 0) isPlaying = true;
+      if (isPlaying) Serial.println("PLAY");
+      else Serial.println("beatDetect");
+      updateTempoByPhoto();
+      beatUpdated  = true;
+    };
   };
   updateState();
   showMatrix();

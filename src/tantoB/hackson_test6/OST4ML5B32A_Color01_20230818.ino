@@ -40,7 +40,7 @@ void LED_Low_Bit() {
   delayMicroseconds(1);
   digitalWrite(DIN_H, LOW);
   digitalWrite(DIN_L, HIGH);
-  delayMicroseconds(1);
+  delayMicroseconds(50);
 }
 
 //=========================================================//
