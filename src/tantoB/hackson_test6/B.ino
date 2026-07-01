@@ -28,9 +28,12 @@ void photoISR() {
   high = digitalRead(PHOTO_PIN);
   if (high) {
     if (!stateHigh) {
-      beatDetected    = true;
-      currentBeatTime = millis();
-      lastBeatTime    = currentBeatTime;
+      unsigned long now = millis();
+      if (now - lastBeatTime > 200) {  // 200ms以内の再検知は無視（300BPM相当）
+        beatDetected    = true;
+        currentBeatTime = now;
+        lastBeatTime    = now;
+      }
       stateHigh = true;
     };
   }
