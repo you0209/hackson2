@@ -5,8 +5,9 @@ const char* PLAY_COLOR_NAME = "Red";
 
 // フォトトランジスタ
 volatile bool beatDetected = false;
-bool high = false;
-bool stateHigh = false;
+int           detectCount  = 0;
+bool          high         = false;
+bool          stateHigh    = false;
 
 // EMA
 float         estimatedBeatInterval = 1000.0f;
@@ -97,7 +98,7 @@ void updateState() {
   switch (state) {
     case IDLE: {
       isPlaying = false;
-      if (strcmp(colorName, START_COLOR_NAME) == 0) {
+      if (beatDetected && detectCount >= 2) {
         prebeatCount = 0;
         state        = PREBEAT;
       };
@@ -175,9 +176,11 @@ void showMatrix() {
 
 // ===== メインループ =====
 void B_loop() {
+  led();
   photoISR();
   if (beatDetected) {
-    beatDetected = false;
+    detectCount++;
+    Serial.println("detect");
     if (state == PREBEAT) prebeatCount++;
     beatFlashUntil  = millis() + BEAT_FLASH_MS;
     readColor();
@@ -189,4 +192,5 @@ void B_loop() {
   };
   updateState();
   showMatrix();
+  beatDetected = false;
 };

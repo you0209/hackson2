@@ -34,8 +34,6 @@ void setup() {
     2000  // 最小露光時間 175µs
   );
   colorSensor.ledDriverConfig(false);
-
-  attachInterrupt(digitalPinToInterrupt(PHOTO_PIN), photoISR, RISING);
 };
 
 void loop() {
