@@ -48,13 +48,13 @@ void readPhoto() {
 const char* detectColor(float r, float g, float b) {
   struct ColorRef { float r, g, b; const char* name; };
   static const ColorRef refs[] = {
-    {0.9036f, 0.4074f, 0.1322f, "Red"},
-    {0.1907f, 0.9350f, 0.2988f, "Green"},
-    {0.2179f, 0.5832f, 0.7826f, "Blue"},
-    {0.6124f, 0.7598f, 0.2188f, "Yellow"},
-    {0.1577f, 0.8075f, 0.5683f, "Cyan"},
-    {0.6965f, 0.4913f, 0.5229f, "Magenta"},
-    {0.5035f, 0.7215f, 0.4751f, "White"}
+    {0.975f, 0.222f, 0.017f, "Red"},
+    {0.130f, 0.957f, 0.261f, "Green"},
+    {0.088f, 0.406f, 0.910f, "Blue"},
+    {0.524f, 0.828f, 0.203f, "Yellow"},
+    {0.082f, 0.754f, 0.653f, "Cyan"},
+    {0.519f, 0.371f, 0.770f, "Magenta"},
+    {0.364f, 0.717f, 0.596f, "White"}
   };
   float mag       = sqrt(r*r + g*g + b*b);
   float nr        = r / mag, ng = g / mag, nb = b / mag;
@@ -188,6 +188,7 @@ void B_loop() {
     if (state == PREBEAT) prebeatCount++;
     beatFlashUntil  = millis() + BEAT_FLASH_MS;
     readColor();
+    Serial.println(colorName);
     if (state != IDLE) {
       if (!isPlaying && strcmp(colorName, PLAY_COLOR_NAME) == 0) isPlaying = true;
       updateTempoByPhoto();
