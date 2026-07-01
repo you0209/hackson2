@@ -16,7 +16,7 @@ volatile unsigned long currentBeatTime = 0;
 volatile unsigned long lastBeatTime    = 0;
 bool                   beatUpdated     = false; //nectBeatTime更新時にtrue
 bool                   isPlaying       = false; //演奏開始時true
-enum                   State           {IDLE, CALIBRATE, PREBEAT, PLAYING, TEMPO_CHANGE, FERMATA};
+enum                   State           {IDLE, PREBEAT, PLAYING};
 State                  state           = IDLE;
 
 void setup() {

@@ -100,21 +100,18 @@ void updateState() {
       if (strcmp(colorName, START_COLOR_NAME) == 0) {
         prebeatCount = 0;
         state        = PREBEAT;
-        Serial.println("PREBEAT");
       };
       break;
     };
     case PREBEAT: {
       if (prebeatCount >= PREBEAT_THRESH) {
         state = PLAYING;
-        Serial.println("PLAYING");
       };
       break;
     };
     case PLAYING: {
       if (millis() - lastBeatTime > (unsigned long)(estimatedBeatInterval * MISSED_BEAT_THRESH)) {
         state = IDLE;
-        Serial.println("IDLE");
       };
       break;
     };
@@ -185,11 +182,8 @@ void B_loop() {
     if (state == PREBEAT) prebeatCount++;
     beatFlashUntil  = millis() + BEAT_FLASH_MS;
     readColor();
-    Serial.println(colorName);
     if (state != IDLE) {
       if (!isPlaying && strcmp(colorName, PLAY_COLOR_NAME) == 0) isPlaying = true;
-      if (isPlaying) Serial.println("PLAY");
-      else Serial.println("beatDetect");
       updateTempoByPhoto();
       beatUpdated  = true;
     };

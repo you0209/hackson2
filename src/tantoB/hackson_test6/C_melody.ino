@@ -6,7 +6,7 @@ uint8_t note = 0; //音名インデックス（休符＝7）
 uint8_t vel = 0; //音の強さ（0~127）
 uint8_t note_long = 0; //音の長さ
 bool sounded = true; //音を鳴らしたか
-const int START_PLAY_THRESH = 8;
+const int START_PLAY_THRESH = 0;
 int startBeatCount = 0;
 int i = 0;
 const uint8_t score[][3] = {
@@ -65,22 +65,20 @@ unsigned long sendTime_set(unsigned long nextBeatTime) {//担当Bよりより出
 
 
 void C_loop() {
-  if (state != IDLE && state != CALIBRATE && state != PREBEAT && state != FERMATA) {
+  if (state != IDLE) {
     if(noteIndex < SCORE_LEN){
       note = score[noteIndex][0];
       vel  = score[noteIndex][1];
       note_long = score[noteIndex][2];
       if (beatUpdated && sounded) {
-        if (isPlaying) {
-          sendTime = sendTime_set(nextBeatTime);
-          if (note_long == 8 && i == 1) {
-            sendTime = currentBeatTime + ( sendTime - currentBeatTime ) * 0.5;
-          };
-          sounded = false;
+        sendTime = sendTime_set(nextBeatTime);
+        if (note_long == 8 && i == 1) {
+          sendTime = currentBeatTime + ( sendTime - currentBeatTime ) * 0.5;
         };
+        if (isPlaying) sounded = false;
         beatUpdated = false;
       };
-      if (millis() >= sendTime && !sounded) {
+      if (millis() >= sendTime && !sounded && isPlaying) {
         if (startBeatCount < START_PLAY_THRESH) {
           startBeatCount++;
           sounded = true;
