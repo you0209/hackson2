@@ -7,12 +7,17 @@
  *   STOP         : 演奏停止 → 待機
  *   FERMATA      : フェルマータ開始
  *   RESUME       : フェルマータ解除 → 演奏中
- *   BPM:xxx      : BPM 変更（40〜160 の整数）
- *   INSTRUMENT:n : 楽器キュー（n=1〜5、対応光量で最前点1回だけ LED 発光）
+ *   BPM:xxx      : BPM 変更（60〜120 の整数）
+ *   INSTRUMENT:n : 楽器キュー（n=1〜5、対応色で最前点1回だけ RGB LED 発光）
  *
  * Arduino → Processing 通知:
  *   STATE:STANDBY / STATE:PREBEAT / STATE:PLAYING / STATE:FERMATA / STATE:STOP
  *   BPM_OK:xxx
+ *
+ * 使用 LED: OST4ML8132A（8mm インテリジェント RGB LED）
+ *   制御: DIN_H（D2）+ DIN_L（D3）の2線式、各10kΩ経由でLED DINへ合流
+ *   データ順: B→G→R（各8bit、計24bit）
+ *   タイミング: TH/TN/TL 各1〜100μs
  */
 
 #include <Servo.h>
@@ -21,8 +26,9 @@
 // ───────────────────────────────────────────
 // ピン定義
 // ───────────────────────────────────────────
-#define PIN_SERVO  9    // D9 (PWM) — サーボモータ
-#define PIN_LED    6    // D6 (PWM) — 指揮用 LED（330Ω 経由）
+#define PIN_SERVO   9   // D9  — サーボモータ
+#define PIN_DIN_H   2   // D2  — OST4ML8132A DIN_H（10kΩ経由）
+#define PIN_DIN_L   3   // D3  — OST4ML8132A DIN_L（10kΩ経由）
 
 // ───────────────────────────────────────────
 // 状態定義
@@ -38,9 +44,9 @@ enum State {
 // ───────────────────────────────────────────
 // 定数
 // ───────────────────────────────────────────
-const int BPM_MIN         = 60;
-const int BPM_MAX         = 120;
-const int BPM_DEFAULT     = 60;
+const int BPM_MIN     = 60;
+const int BPM_MAX     = 120;
+const int BPM_DEFAULT = 60;
 
 const int SERVO_CENTER    = 30;
 const int SERVO_AMPLITUDE = 30;
@@ -49,7 +55,16 @@ const int SERVO_SAFE      =  0;
 const int SERVO_STEPS      = 20;
 const int SERVO_FRONT_STEP = SERVO_STEPS / 4;
 
-const int INSTRUMENT_BRIGHTNESS[6] = { 0, 51, 102, 153, 204, 255 };
+// 楽器ごとの発光色 {R, G, B}（0〜255）
+// インデックス0は未使用、1〜5が楽器A〜E
+const uint8_t INSTRUMENT_COLOR[6][3] = {
+  {  0,   0,   0},  // 0: 未使用
+  {255,   0,   0},  // 1: 楽器A — 赤
+  {  0, 255,   0},  // 2: 楽器B — 緑
+  {  0,   0, 255},  // 3: 楽器C — 青
+  {255, 255,   0},  // 4: 楽器D — 黄
+  {255,   0, 255},  // 5: 楽器E — マゼンタ
+};
 
 // ───────────────────────────────────────────
 // グローバル変数
@@ -65,7 +80,9 @@ volatile int   currentBPM    = BPM_DEFAULT;
 volatile int   servoStep     = 0;
 volatile int   prebeatCount  = 0;
 volatile bool  beatFlag      = false;
-volatile bool  stateChanged  = false;  // 予備拍→演奏中の遷移を loop() へ通知
+volatile bool  stateChanged  = false;
+volatile bool  ledUpdateFlag = false;
+volatile uint8_t ledR = 0, ledG = 0, ledB = 0;
 
 volatile int   pendingCue    = 0;
 
@@ -78,6 +95,9 @@ void setupTimer(int bpm);
 void onBeatTimer(timer_callback_args_t *args);
 void updateServo();
 void updateLED();
+void sendLED(uint8_t r, uint8_t g, uint8_t b);
+void sendBit(bool bit);
+void ledOff();
 String receiveCommand();
 void changeState(State s);
 void setBPM(int bpm);
@@ -91,8 +111,15 @@ void setup() {
   servo.attach(PIN_SERVO);
   servo.write(SERVO_SAFE);
 
-  pinMode(PIN_LED, OUTPUT);
-  analogWrite(PIN_LED, 0);
+  // OST4ML8132A ピン初期化
+  // 待機状態：DIN_H=LOW, DIN_L=HIGH（データシート参考回路より）
+  pinMode(PIN_DIN_H, OUTPUT);
+  pinMode(PIN_DIN_L, OUTPUT);
+  digitalWrite(PIN_DIN_H, LOW);
+  digitalWrite(PIN_DIN_L, HIGH);
+
+  // 消灯
+  ledOff();
 
   timerCh = FspTimer::get_available_timer(timerType);
   if (timerCh < 0) {
@@ -109,7 +136,12 @@ void setup() {
 // loop()
 // ===================================================================
 void loop() {
-  // シリアル受信
+  // LED更新（ISRからのフラグで受け取り、loop()側で送信）
+  if (ledUpdateFlag) {
+    ledUpdateFlag = false;
+    sendLED(ledR, ledG, ledB);
+  }
+
   String cmd = receiveCommand();
   if (cmd.length() > 0) {
     if (cmd == "START") {
@@ -135,13 +167,11 @@ void loop() {
     }
   }
 
-  // STOP 後処理
   if (currentState == STATE_STOP) {
     servo.write(SERVO_SAFE);
     changeState(STATE_STANDBY);
   }
 
-  // 予備拍→演奏中の遷移通知（ISR内では Serial 送信できないため）
   if (stateChanged) {
     stateChanged = false;
     Serial.println("STATE:PLAYING");
@@ -174,14 +204,16 @@ void onBeatTimer(timer_callback_args_t *args) {
 
     case STATE_FERMATA:
       servo.write(SERVO_CENTER + SERVO_AMPLITUDE);
-      analogWrite(PIN_LED, 0);
+      ledR = 0; ledG = 0; ledB = 0;
+      ledUpdateFlag = true;
       break;
 
     case STATE_STANDBY:
     case STATE_STOP:
     default:
       servo.write(SERVO_SAFE);
-      analogWrite(PIN_LED, 0);
+      ledR = 0; ledG = 0; ledB = 0;
+      ledUpdateFlag = true;
       break;
   }
 }
@@ -198,19 +230,74 @@ void updateServo() {
 
 // ===================================================================
 // updateLED()
+//   最前点（servoStep == SERVO_FRONT_STEP+1）でのみ発光要求をセット
+//   実際の送信は loop() 側で行う
 // ===================================================================
 void updateLED() {
   bool atFront = (servoStep == SERVO_FRONT_STEP + 1);
   if (atFront) {
-    int brightness = 255;
     if (pendingCue > 0) {
-      brightness = INSTRUMENT_BRIGHTNESS[pendingCue];
+      ledR = INSTRUMENT_COLOR[pendingCue][0];
+      ledG = INSTRUMENT_COLOR[pendingCue][1];
+      ledB = INSTRUMENT_COLOR[pendingCue][2];
       pendingCue = 0;
+    } else {
+      ledR = 255; ledG = 255; ledB = 255;  // 通常フラッシュ：白
     }
-    analogWrite(PIN_LED, brightness);
   } else {
-    analogWrite(PIN_LED, 0);
+    ledR = 0; ledG = 0; ledB = 0;
   }
+  ledUpdateFlag = true;
+}
+
+// ===================================================================
+// sendLED()  — OST4ML8132A へ 24bit 送信（B→G→R順）
+//   DIN_H/DIN_L を抵抗合成し DIN に VDD/VDD2/0V の3値を作る方式
+//   1: VDD(High)をTH保持 → VDD/2(Mid)をTN保持
+//   0: 0V(Low)をTL保持   → VDD/2(Mid)をTN保持
+// ===================================================================
+void sendLED(uint8_t r, uint8_t g, uint8_t b) {
+  // B→G→R の順で送信
+  for (int i = 7; i >= 0; i--) sendBit((b >> i) & 0x01);
+  for (int i = 7; i >= 0; i--) sendBit((g >> i) & 0x01);
+  for (int i = 7; i >= 0; i--) sendBit((r >> i) & 0x01);
+
+  // ラッチ：DIN_H=LOW, DIN_L=HIGH を 3ms 以上保持
+  digitalWrite(PIN_DIN_H, LOW);
+  digitalWrite(PIN_DIN_L, HIGH);
+  delayMicroseconds(3000);
+}
+
+// ===================================================================
+// sendBit()  — 1ビット送信
+// ===================================================================
+void sendBit(bool bit) {
+  // OST4ML8132A: DIN_H/DIN_Lを抵抗合成し、DINピンにVDD/VDD2/0Vの3値を作る方式
+  //   HIGH+HIGH => VDD(High)   HIGH+LOW => VDD/2(Mid)   LOW+LOW => 0V(Low)
+  if (bit) {
+    // 1: VDD(High) を TH 保持 → VDD/2(Mid) を TN 保持
+    digitalWrite(PIN_DIN_H, HIGH);
+    digitalWrite(PIN_DIN_L, HIGH);
+    delayMicroseconds(10);  // TH
+    digitalWrite(PIN_DIN_L, LOW);
+    delayMicroseconds(10);  // TN
+  } else {
+    // 0: 0V(Low) を TL 保持 → VDD/2(Mid) を TN 保持
+    digitalWrite(PIN_DIN_H, LOW);
+    digitalWrite(PIN_DIN_L, LOW);
+    delayMicroseconds(10);  // TL
+    digitalWrite(PIN_DIN_H, HIGH);
+    delayMicroseconds(10);  // TN
+  }
+  // ここで必ず DIN_H=HIGH, DIN_L=LOW（Mid）で終わる → 次ビットの起点として一貫
+  delayMicroseconds(5);
+}
+
+// ===================================================================
+// ledOff()  — LED 消灯
+// ===================================================================
+void ledOff() {
+  sendLED(0, 0, 0);
 }
 
 // ===================================================================
@@ -240,7 +327,7 @@ void changeState(State s) {
   switch (s) {
     case STATE_STANDBY:
       servo.write(SERVO_SAFE);
-      analogWrite(PIN_LED, 0);
+      ledOff();
       servoStep    = 0;
       prebeatCount = 0;
       pendingCue   = 0;
@@ -257,11 +344,11 @@ void changeState(State s) {
       break;
     case STATE_FERMATA:
       servo.write(SERVO_CENTER + SERVO_AMPLITUDE);
-      analogWrite(PIN_LED, 0);
+      ledOff();
       Serial.println("STATE:FERMATA");
       break;
     case STATE_STOP:
-      analogWrite(PIN_LED, 0);
+      ledOff();
       pendingCue = 0;
       Serial.println("STATE:STOP");
       break;
