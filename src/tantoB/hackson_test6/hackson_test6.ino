@@ -11,13 +11,13 @@ AE_S13683_LED    colorSensor;
 #define LED_PIN   5
 #define DIN_H     2
 #define DIN_L     3
-unsigned long          nextBeatTime    = 0; //次の拍の予測絶対時刻(milli)
-volatile unsigned long currentBeatTime = 0;
-volatile unsigned long lastBeatTime    = 0;
-bool                   beatUpdated     = false; //nectBeatTime更新時にtrue
-bool                   isPlaying       = false; //演奏開始時true
-enum                   State           {IDLE, PREBEAT, PLAYING};
-State                  state           = IDLE;
+unsigned long nextBeatTime    = 0; //次の拍の予測絶対時刻(milli)
+unsigned long currentBeatTime = 0;
+unsigned long lastBeatTime    = 0;
+bool          beatUpdated     = false; //nectBeatTime更新時にtrue
+bool          isPlaying       = false; //演奏開始時true
+enum          State           {IDLE, PREBEAT, PLAYING};
+State         state           = IDLE;
 
 void setup() {
   pinMode(PHOTO_PIN, INPUT);

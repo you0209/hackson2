@@ -28,6 +28,11 @@
 % --- 履歴行をここに追記していく（提出時にクリア） ---
 2026-07-02 & 25G1094 : 中村海惺 & 第2章 担当D基本設計（機能一覧・システム構成図・音響合成チェーン・操作インターフェース・状態遷移図） & 実装に合わせて更新．音量制御を\texttt{out.setVolume()}から\texttt{out.setGain()}に修正．合成チェーンの例外を注記．ポート選択をドロップダウンUIから自動接続方式に変更．状態モニタを受信データモニタに変更．状態遷移の記述をボイス方式に更新し状態遷移図を差し替え \\
 2026-07-02 & 25G1094 : 中村海惺 & 第3章 担当D詳細設計（楽器別音響パラメータ・ソフトウェア設計・オブジェクト設計・関数設計・処理フロー） & 楽器別詳細パラメータ表を実装値に更新．多重発音を空きADSRスロット方式から動的ボイス方式の記述に変更．\texttt{initInstrument(partID)}をコンストラクタ\texttt{InstrumentUnit(AudioOutput)}に変更．ファイル構成を楽器別ファイルに修正．\texttt{out.setVolume()}を\texttt{out.setGain()}に修正 \\
+2026-07-03 & 担当B（長野・慶田） & 第2章 担当B 基本設計 & センサ構成変更：赤外線センサ（GP2Y0A21YK）を廃止．フォトトランジスタをアナログ入力（A1）からデジタル入力（D4）に変更し，ポーリングによる立ち上がりエッジ検出方式を採用 \\
+2026-07-03 & 担当B（長野・慶田） & 第2章 担当B 基本設計 & 演奏開始判定変更：フォトトランジスタの輝度レベルによるキャリブレーション判定を，カラーセンサ（AE\_S13683\_LED）によるコサイン類似度色名判定（\texttt{PLAY\_COLOR\_NAME}）に変更 \\
+2026-07-03 & 担当B（長野・慶田） & 第2章 担当B 基本設計 & 状態削減：CALIBRATE・TEMPO\_CHANGE・FERMATAの3状態を廃止し，IDLE・PREBEAT・PLAYINGの3状態に簡略化 \\
+2026-07-03 & 担当B（長野・慶田） & 第3章 担当B 詳細設計 & 部品一覧・回路変更：赤外線センサ削除，フォトトランジスタ接続をD4（デジタル）に変更，カラーLED（OST4ML5B32A）ドライバ用ピンD2/D3を追加 \\
+2026-07-03 & 担当B（長野・慶田） & 第3章 担当B 詳細設計 & 関数変更：\texttt{readIr()・calibrate()・updateIrAverage()・detectIrPeak()・predictBeatByIr()・updateTempoByIr()・detectFermata()}を廃止，\texttt{detectColor()・readColor()}を追加，\texttt{detectPhotoBeat()}を\texttt{photoISR()}に変更 \\
 
 \bottomrule
 \endfoot

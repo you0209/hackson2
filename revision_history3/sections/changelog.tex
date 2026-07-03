@@ -55,6 +55,12 @@
 2026-06-19 & 25G1094 : 中村海惺 & 第2章 担当D基本設計（機能一覧） & LONG（音価）をADSRのDecay/Releaseへ倍率反映する響きの長さ調整方式に変更し，実際の消音はNOTE\_OFF=1で制御と明記．複合音生成機能を廃止．\\
 2026-06-19 & 25G1094 : 中村海惺 & 第3章 担当D詳細設計（楽器別音響パラメータ・オブジェクト設計・関数設計） & LONGを響きの長さ調整（Decay/Release倍率）方式へ更新．\texttt{noteOn}にnoteLength引数を追加し停止は\texttt{noteOff()}で制御と明記．複合音生成の記述を削除． \\
 
+2026-07-03 & 担当B（長野・慶田） & 第2章 担当B 基本設計 & センサ構成変更：赤外線センサ（GP2Y0A21YK）を廃止．フォトトランジスタをアナログ入力（A1）からデジタル入力（D4）に変更し，ポーリングによる立ち上がりエッジ検出方式を採用 \\
+2026-07-03 & 担当B（長野・慶田） & 第2章 担当B 基本設計 & 演奏開始判定変更：フォトトランジスタの輝度レベルによるキャリブレーション判定を，カラーセンサ（AE\_S13683\_LED）によるコサイン類似度色名判定（\texttt{PLAY\_COLOR\_NAME}）に変更 \\
+2026-07-03 & 担当B（長野・慶田） & 第2章 担当B 基本設計 & 状態削減：CALIBRATE・TEMPO\_CHANGE・FERMATAの3状態を廃止し，IDLE・PREBEAT・PLAYINGの3状態に簡略化 \\
+2026-07-03 & 担当B（長野・慶田） & 第3章 担当B 詳細設計 & 部品一覧・回路変更：赤外線センサ削除，フォトトランジスタ接続をD4（デジタル）に変更，カラーLED（OST4ML5B32A）ドライバ用ピンD2/D3を追加 \\
+2026-07-03 & 担当B（長野・慶田） & 第3章 担当B 詳細設計 & 関数変更：\texttt{readIr()・calibrate()・updateIrAverage()・detectIrPeak()・predictBeatByIr()・updateTempoByIr()・detectFermata()}を廃止，\texttt{detectColor()・readColor()}を追加，\texttt{detectPhotoBeat()}を\texttt{photoISR()}に変更 \\
+
 \bottomrule
 \endfoot
 \end{longtable}
