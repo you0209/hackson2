@@ -4,10 +4,10 @@ const char* colorName       = "Unknown";
 const char* PLAY_COLOR_NAME = "Red";
 
 // フォトトランジスタ
-volatile bool beatDetected = false;
-int           detectCount  = 0;
-bool          high         = false;
-bool          stateHigh    = false;
+bool beatDetected = false;
+int  detectCount  = 0;
+bool high         = false;
+bool stateHigh    = false;
 
 // EMA
 float         estimatedBeatInterval = 1000.0f;
@@ -29,12 +29,12 @@ void photoISR() {
   if (high) {
     if (!stateHigh) {
       unsigned long now = millis();
+      stateHigh = true;
       if (now - lastBeatTime > 200) {  // 200ms以内の再検知は無視（300BPM相当）
         beatDetected    = true;
         currentBeatTime = now;
         lastBeatTime    = now;
-      }
-      stateHigh = true;
+      };
     };
   }
   else stateHigh = false;
@@ -73,7 +73,7 @@ const char* detectColor(float r, float g, float b) {
 // カラーセンサの値を平滑化しcolorNameに色を代入
 void readColor() {
   AE_S13683_LEDResult result = colorSensor.getColorSensorResultOneshot();
-  colorName  = detectColor(result.red, result.green, result.blue);
+  colorName = detectColor(result.red, result.green, result.blue);
 };
 
 // フォトトランジスタの値より次の拍を予測
@@ -184,14 +184,14 @@ void B_loop() {
   led();
   photoISR();
   if (beatDetected) {
-    detectCount++;
-    if (state == PREBEAT) prebeatCount++;
     beatFlashUntil  = millis() + BEAT_FLASH_MS;
+    detectCount++;
     readColor();
+    if (state == PREBEAT) prebeatCount++;
     if (state != IDLE) {
       if (!isPlaying && strcmp(colorName, PLAY_COLOR_NAME) == 0) isPlaying = true;
       updateTempoByPhoto();
-      beatUpdated  = true;
+      beatUpdated = true;
     };
   };
   updateState();
