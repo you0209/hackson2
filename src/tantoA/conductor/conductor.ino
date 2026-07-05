@@ -85,12 +85,12 @@ volatile bool  stateChanged  = false;
 volatile bool  ledUpdateFlag = false;
 volatile uint8_t ledR = 0, ledG = 0, ledB = 0;
 
-volatile int   pendingCue    = 0;
-
-// 事前キューキュー（8拍分）
-uint8_t cueQueue[8] = {0};
-int     cueCount    = 0;   // セット済み数（8になるまでSTART不可）
-int     cueIndex    = 0;   // 再生中の現在位置
+// カラーキュー（5色分）
+uint8_t cueQueue[5]  = {0};
+int     cueCount     = 0;    // セット済み数
+int     cueIndex     = 0;    // 再生中の現在位置
+bool    cueActive    = false; // START_CUE後にtrue
+int     beatCount    = 0;    // START_CUE後の拍カウント
 
 String serialBuffer = "";
 
@@ -151,13 +151,7 @@ void loop() {
   String cmd = receiveCommand();
   if (cmd.length() > 0) {
     if (cmd == "START") {
-      if (cueCount < 8) {
-        Serial.print("ERR:CUE_NOT_READY:");
-        Serial.print(cueCount);
-        Serial.println("/8");
-      } else {
-        changeState(STATE_PREBEAT);
-      }
+      changeState(STATE_PREBEAT);
     } else if (cmd == "STOP") {
       changeState(STATE_STOP);
     } else if (cmd == "FERMATA") {
@@ -171,20 +165,23 @@ void loop() {
     } else if (cmd.startsWith("BPM:")) {
       int val = cmd.substring(4).toInt();
       setBPM(val);
+    } else if (cmd == "START_CUE") {
+      if (currentState == STATE_PLAYING && cueCount > 0) {
+        cueActive  = true;
+        cueIndex   = 0;
+        beatCount  = 0;
+        Serial.println("CUE_ACTIVE");
+      }
     } else if (cmd.startsWith("INSTRUMENT:")) {
       int n = cmd.substring(11).toInt();
       if (n >= 1 && n <= 5) {
-        if (currentState == STATE_STANDBY) {
-          if (cueCount < 8) {
-            cueQueue[cueCount++] = n;
-            Serial.print("CUE:");
-            Serial.print(cueCount);
-            Serial.println("/8");
-          } else {
-            Serial.println("ERR:CUE_FULL");
-          }
-        } else if (currentState == STATE_PLAYING) {
-          pendingCue = n;
+        if (cueCount < 5) {
+          cueQueue[cueCount++] = n;
+          Serial.print("CUE:");
+          Serial.print(cueCount);
+          Serial.println("/5");
+        } else {
+          Serial.println("ERR:CUE_FULL");
         }
       }
     }
@@ -259,21 +256,20 @@ void updateServo() {
 void updateLED() {
   bool atFront = (servoStep == SERVO_FRONT_STEP + 1);
   if (atFront) {
-    int cue = 0;
-    if (cueIndex < 8) {
-      // 事前セット済みキューを順番に使う
-      cue = cueQueue[cueIndex++];
-    } else if (pendingCue > 0) {
-      // キュー使い切り後はリアルタイム指定
-      cue = pendingCue;
-      pendingCue = 0;
-    }
-    if (cue > 0) {
-      ledR = INSTRUMENT_COLOR[cue][0];
-      ledG = INSTRUMENT_COLOR[cue][1];
-      ledB = INSTRUMENT_COLOR[cue][2];
+    if (cueActive) {
+      beatCount++;
+      if (beatCount % 8 == 0 && cueIndex < cueCount) {
+        // 8拍ごとに次の色を発光
+        int cue = cueQueue[cueIndex++];
+        ledR = INSTRUMENT_COLOR[cue][0];
+        ledG = INSTRUMENT_COLOR[cue][1];
+        ledB = INSTRUMENT_COLOR[cue][2];
+        if (cueIndex >= cueCount) cueActive = false;  // 全色終了
+      } else {
+        ledR = 255; ledG = 255; ledB = 255;  // 白
+      }
     } else {
-      ledR = 255; ledG = 255; ledB = 255;  // 通常フラッシュ：白
+      ledR = 255; ledG = 255; ledB = 255;  // 常時白フラッシュ
     }
   } else {
     ledR = 0; ledG = 0; ledB = 0;
@@ -361,9 +357,10 @@ void changeState(State s) {
       ledOff();
       servoStep    = 0;
       prebeatCount = 0;
-      pendingCue   = 0;
       cueCount     = 0;
       cueIndex     = 0;
+      cueActive    = false;
+      beatCount    = 0;
       memset(cueQueue, 0, sizeof(cueQueue));
       Serial.println("STATE:STANDBY");
       break;
@@ -371,6 +368,8 @@ void changeState(State s) {
       servoStep    = 0;
       prebeatCount = 0;
       cueIndex     = 0;
+      cueActive    = false;
+      beatCount    = 0;
       Serial.println("STATE:PREBEAT");
       break;
     case STATE_PLAYING:
@@ -384,7 +383,7 @@ void changeState(State s) {
       break;
     case STATE_STOP:
       ledOff();
-      pendingCue = 0;
+      cueActive = false;
       Serial.println("STATE:STOP");
       break;
   }

@@ -5,7 +5,7 @@ String bpmInput = "";
 String message = "BPMを入力してください";
 int currentBPM = 60;
 String currentStateLabel = "待機状態";  // Arduino から受信した状態
-int cueCount = 0;  // 事前セット済みキュー数（8になるまでSTART不可）
+int cueCount = 0;  // 事前セット済みキュー数（最大5色）
 
 void setup(){
   size(600, 700);
@@ -26,24 +26,27 @@ void draw(){
   fill(0);
   text("指揮者人形コントロール用アプリケーション", 300, 50);
   
-  color startColor = (cueCount >= 8) ? color(100, 200, 100) : color(160, 160, 160);
-  drawButton(225, 100, 150, 50, "演奏開始", startColor);
-  drawButton(225, 150, 150, 50, "演奏終了", color(200, 100, 100));
+  drawButton(225, 100, 150, 50, "演奏開始", color(100, 200, 100));
+  drawButton(225, 160, 150, 50, "演奏終了", color(200, 100, 100));
   if (currentStateLabel.equals("フェルマータ")) {
-    drawButton(225, 200, 150, 50, "再開", color(255, 165, 0));
+    drawButton(225, 220, 150, 50, "再開", color(255, 165, 0));
   } else {
-    drawButton(225, 200, 150, 50, "フェルマータ", color(100, 100, 200));
+    drawButton(225, 220, 150, 50, "フェルマータ", color(100, 100, 200));
   }
+  // キュー開始ボタン（演奏中かつキューあり時にアクティブ）
+  color cueStartColor = (currentStateLabel.equals("演奏中") && cueCount > 0)
+    ? color(220, 120, 0) : color(160, 160, 160);
+  drawButton(225, 280, 150, 50, "キュー開始", cueStartColor);
   
-  drawButton(50 , 300, 100, 50, "楽器A", color(100, 100, 100));
-  drawButton(150, 300, 100, 50, "楽器B", color(100, 100, 100));
-  drawButton(250, 300, 100, 50, "楽器C", color(100, 100, 100));
-  drawButton(350, 300, 100, 50, "楽器D", color(100, 100, 100));
-  drawButton(450, 300, 100, 50, "楽器E", color(100, 100, 100));
+  drawButton(50 , 340, 100, 50, "楽器A", color(100, 100, 100));
+  drawButton(150, 340, 100, 50, "楽器B", color(100, 100, 100));
+  drawButton(250, 340, 100, 50, "楽器C", color(100, 100, 100));
+  drawButton(350, 340, 100, 50, "楽器D", color(100, 100, 100));
+  drawButton(450, 340, 100, 50, "楽器E", color(100, 100, 100));
 
   // キュー状態表示
-  fill(cueCount >= 8 ? color(100, 200, 100) : color(50));
-  text("キュー: " + cueCount + " / 8", 300, 365);
+  fill(cueCount >= 5 ? color(100, 200, 100) : color(50));
+  text("キュー: " + cueCount + " / 5", 300, 380);
   
   // 入力フォームの描画
   fill(255);
@@ -94,16 +97,16 @@ void serialEvent(Serial p) {
   println("Recv: " + line);
   
   if (line.startsWith("CUE:")) {
-    // "CUE:x/8" → キューカウンター更新
+    // "CUE:x/5" → キューカウンター更新
     int slash = line.indexOf('/');
     if (slash > 4) {
       cueCount = int(line.substring(4, slash));
-      message = "キューセット: " + cueCount + "/8";
+      message = "キューセット: " + cueCount + "/5";
     }
-  } else if (line.startsWith("ERR:CUE_NOT_READY")) {
-    message = "キューが足りません！ " + line.substring(18);
+  } else if (line.equals("CUE_ACTIVE")) {
+    message = "キュー再生開始！";
   } else if (line.equals("ERR:CUE_FULL")) {
-    message = "キューは満杯です（8/8）";
+    message = "キューは満杯です（5/5）";
   } else if (line.startsWith("STATE:")) {
     // STANDBYに戻ったらキューカウンターリセット
     if (line.equals("STATE:STANDBY")) cueCount = 0;
@@ -124,32 +127,38 @@ void mousePressed() {
     sendCommand("START");
   }
   // 演奏停止ボタン
-  if (mouseX > 225 && mouseX < 375 && mouseY > 150 && mouseY < 200) {
+  if (mouseX > 225 && mouseX < 375 && mouseY > 160 && mouseY < 210) {
     sendCommand("STOP");
   }
-  // フェルマータボタン（トグル：演奏中→フェルマータ、フェルマータ→演奏中）
-  if (mouseX > 225 && mouseX < 375 && mouseY > 200 && mouseY < 250) {
+  // フェルマータボタン
+  if (mouseX > 225 && mouseX < 375 && mouseY > 220 && mouseY < 270) {
     if (currentStateLabel.equals("フェルマータ")) {
       sendCommand("RESUME");
     } else {
       sendCommand("FERMATA");
     }
   }
-  
-  //楽器A
-  if (mouseX > 50 && mouseX < 150 && mouseY > 300 && mouseY < 350) {
+  // キュー開始ボタン（演奏中かつキューあり時のみ）
+  if (mouseX > 225 && mouseX < 375 && mouseY > 280 && mouseY < 330) {
+    if (currentStateLabel.equals("演奏中") && cueCount > 0) {
+      sendCommand("START_CUE");
+    }
+  }
+
+  // 楽器ボタン
+  if (mouseX > 50 && mouseX < 150 && mouseY > 340 && mouseY < 390) {
     sendCue(1);
   }
-  if (mouseX > 150 && mouseX < 250 && mouseY > 300 && mouseY < 350) {
+  if (mouseX > 150 && mouseX < 250 && mouseY > 340 && mouseY < 390) {
     sendCue(2);
   }
-  if (mouseX > 250 && mouseX < 350 && mouseY > 300 && mouseY < 350) {
+  if (mouseX > 250 && mouseX < 350 && mouseY > 340 && mouseY < 390) {
     sendCue(3);
   }
-  if (mouseX > 350 && mouseX < 450 && mouseY > 300 && mouseY < 350) {
+  if (mouseX > 350 && mouseX < 450 && mouseY > 340 && mouseY < 390) {
     sendCue(4);
   }
-  if (mouseX > 450 && mouseX < 550 && mouseY > 300 && mouseY < 350) {
+  if (mouseX > 450 && mouseX < 550 && mouseY > 340 && mouseY < 390) {
     sendCue(5);
   }
 }
