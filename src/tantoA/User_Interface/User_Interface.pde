@@ -5,6 +5,7 @@ String bpmInput = "";
 String message = "BPMを入力してください";
 int currentBPM = 60;
 String currentStateLabel = "待機状態";  // Arduino から受信した状態
+int cueCount = 0;  // 事前セット済みキュー数（8になるまでSTART不可）
 
 void setup(){
   size(600, 700);
@@ -25,7 +26,8 @@ void draw(){
   fill(0);
   text("指揮者人形コントロール用アプリケーション", 300, 50);
   
-  drawButton(225, 100, 150, 50, "演奏開始", color(100, 200, 100));
+  color startColor = (cueCount >= 8) ? color(100, 200, 100) : color(160, 160, 160);
+  drawButton(225, 100, 150, 50, "演奏開始", startColor);
   drawButton(225, 150, 150, 50, "演奏終了", color(200, 100, 100));
   if (currentStateLabel.equals("フェルマータ")) {
     drawButton(225, 200, 150, 50, "再開", color(255, 165, 0));
@@ -38,6 +40,10 @@ void draw(){
   drawButton(250, 300, 100, 50, "楽器C", color(100, 100, 100));
   drawButton(350, 300, 100, 50, "楽器D", color(100, 100, 100));
   drawButton(450, 300, 100, 50, "楽器E", color(100, 100, 100));
+
+  // キュー状態表示
+  fill(cueCount >= 8 ? color(100, 200, 100) : color(50));
+  text("キュー: " + cueCount + " / 8", 300, 365);
   
   // 入力フォームの描画
   fill(255);
@@ -87,7 +93,20 @@ void serialEvent(Serial p) {
   
   println("Recv: " + line);
   
-  if (line.startsWith("STATE:")) {
+  if (line.startsWith("CUE:")) {
+    // "CUE:x/8" → キューカウンター更新
+    int slash = line.indexOf('/');
+    if (slash > 4) {
+      cueCount = int(line.substring(4, slash));
+      message = "キューセット: " + cueCount + "/8";
+    }
+  } else if (line.startsWith("ERR:CUE_NOT_READY")) {
+    message = "キューが足りません！ " + line.substring(18);
+  } else if (line.equals("ERR:CUE_FULL")) {
+    message = "キューは満杯です（8/8）";
+  } else if (line.startsWith("STATE:")) {
+    // STANDBYに戻ったらキューカウンターリセット
+    if (line.equals("STATE:STANDBY")) cueCount = 0;
     String state = line.substring(6);
     if (state.equals("STANDBY"))       currentStateLabel = "待機状態";
     else if (state.equals("PREBEAT"))  currentStateLabel = "予備拍";
