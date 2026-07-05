@@ -26,17 +26,20 @@ const int              MISSED_BEAT_THRESH = 3;
 // ===== 関数 =====
 // フォトトランジスタの割り込み
 void photoISR() {
-  int photoRaw = analogRead(PHOTO_PIN);
-  photoValue = (float)photoRaw / 1023.0 * 100.0;
-  if (photoValue >= 45.0) high = true;
-  else high = false;
-  if (high && !stateHigh) {
-    beatDetected = true;
-    currentBeatTime = millis();
-    lastBeatTime = currentBeatTime;
-    stateHigh = true;
-  }
-  else stateHigh = false;
+  unsigned long now = millis();
+  if (now - lastBeatTime >= 200) {
+    int photoRaw = analogRead(PHOTO_PIN);
+    photoValue = (float)photoRaw / 1023.0 * 100.0;
+    if (photoValue >= 40.0) high = true;
+    else high = false;
+    if (high && !stateHigh) {
+      beatDetected = true;
+      currentBeatTime = millis();
+      lastBeatTime = currentBeatTime;
+      stateHigh = true;
+    }
+    else stateHigh = false;
+  };
 };
 
 void readPhoto() {
@@ -103,18 +106,21 @@ void updateState() {
       if (beatDetected && detectCount >= 2) {
         prebeatCount = 0;
         state        = PREBEAT;
+        Serial.println("PREBEAT");
       };
       break;
     };
     case PREBEAT: {
       if (prebeatCount >= PREBEAT_THRESH) {
         state = PLAYING;
+        Serial.println("PLAYING");
       };
       break;
     };
     case PLAYING: {
       if (millis() - lastBeatTime > (unsigned long)(estimatedBeatInterval * MISSED_BEAT_THRESH)) {
         state = IDLE;
+        Serial.println("IDLE");
       };
       break;
     };
@@ -183,6 +189,7 @@ void B_loop() {
   led();
   photoISR();
   if (beatDetected) {
+    Serial.println("detect");
     beatFlashUntil  = millis() + BEAT_FLASH_MS;
     detectCount++;
     readColor();
