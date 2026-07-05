@@ -60,11 +60,11 @@ const int SERVO_FRONT_STEP = SERVO_STEPS / 4;
 
 const uint8_t INSTRUMENT_COLOR[6][3] = {
   {  0,   0,   0},  // 0: 未使用
-  {255,   0,   0},  // 1: Red
-  {  0, 255,   0},  // 2: Green
-  {  0,   0, 255},  // 3: Blue
-  {255, 255,   0},  // 4: Yellow
-  {127,   0, 127},  // 5: Magenta
+  {255,   0,   0},  // 1: ピアノ       (Red)
+  {  0, 255,   0},  // 2: 鉄琴         (Green)
+  {  0,   0, 255},  // 3: トランペット  (Blue)
+  {255, 255,   0},  // 4: ドラム        (Yellow)
+  {127,   0, 127},  // 5: シンバル      (Magenta)
 };
 
 // ───────────────────────────────────────────
@@ -250,16 +250,19 @@ void updateServo() {
 
 // ===================================================================
 // updateLED()
-//   最前点（servoStep == SERVO_FRONT_STEP+1）でのみ発光要求をセット
+//   atBeat（最前点）でキュー更新・色決定
+//   atFront（最前点±1ステップ）で点灯ウィンドウを広げる
 //   実際の送信は loop() 側で行う
 // ===================================================================
 void updateLED() {
-  bool atFront = (servoStep == SERVO_FRONT_STEP + 1);
-  if (atFront) {
+  bool atBeat  = (servoStep == SERVO_FRONT_STEP + 1);
+  bool atFront = (servoStep >= SERVO_FRONT_STEP && servoStep <= SERVO_FRONT_STEP + 2);
+
+  if (atBeat) {
+    // 拍の瞬間：キュー更新と色決定
     if (cueActive) {
       beatCount++;
       if (beatCount % 8 == 0 && cueIndex < cueCount) {
-        // 8拍ごとに次の色を発光
         int cue = cueQueue[cueIndex++];
         ledR = INSTRUMENT_COLOR[cue][0];
         ledG = INSTRUMENT_COLOR[cue][1];
@@ -271,9 +274,11 @@ void updateLED() {
     } else {
       ledR = 255; ledG = 255; ledB = 255;  // 常時白フラッシュ
     }
-  } else {
+  } else if (!atFront) {
+    // ウィンドウ外：消灯
     ledR = 0; ledG = 0; ledB = 0;
   }
+  // atFront && !atBeat: 前後ウィンドウ内 → ledR/G/B を維持して点灯継続
   ledUpdateFlag = true;
 }
 

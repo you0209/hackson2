@@ -35,11 +35,11 @@ void draw(){
   }
   drawButton(225, 280, 150, 50, "キュー開始", color(220, 120, 0));
   
-  drawButton(50 , 340, 100, 50, "楽器A", color(100, 100, 100));
-  drawButton(150, 340, 100, 50, "楽器B", color(100, 100, 100));
-  drawButton(250, 340, 100, 50, "楽器C", color(100, 100, 100));
-  drawButton(350, 340, 100, 50, "楽器D", color(100, 100, 100));
-  drawButton(450, 340, 100, 50, "楽器E", color(100, 100, 100));
+  drawButton(50 , 340, 100, 50, "ピアノ",       color(200,  50,  50));
+  drawButton(150, 340, 100, 50, "鉄琴",         color( 50, 180,  50));
+  drawButton(250, 340, 100, 50, "トランペット", color( 50,  50, 200));
+  drawButton(350, 340, 100, 50, "ドラム",       color(200, 200,  50));
+  drawButton(450, 340, 100, 50, "シンバル",     color(150,  50, 150));
 
   // キュー状態表示
   fill(cueCount >= 5 ? color(100, 200, 100) : color(50));
