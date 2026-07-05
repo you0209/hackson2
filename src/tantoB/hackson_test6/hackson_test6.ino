@@ -7,7 +7,7 @@ ArduinoLEDMatrix matrix;
 AE_S13683_LED    colorSensor;
 
 // 共通変数
-#define PHOTO_PIN 4
+#define PHOTO_PIN A0
 #define LED_PIN   5
 #define DIN_H     2
 #define DIN_L     3

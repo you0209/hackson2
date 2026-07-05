@@ -1,13 +1,14 @@
 // ===== 変数定義 =====
 //カラーセンサ
 const char* colorName       = "Unknown";
-const char* PLAY_COLOR_NAME = "Red";
+const char* PLAY_COLOR_NAME = "Green";
 
 // フォトトランジスタ
-bool beatDetected = false;
-int  detectCount  = 0;
-bool high         = false;
-bool stateHigh    = false;
+bool  beatDetected = false;
+int   detectCount  = 0;
+bool  high         = false;
+bool  stateHigh    = false;
+float photoValue   = 0.0;
 
 // EMA
 float         estimatedBeatInterval = 1000.0f;
@@ -25,17 +26,15 @@ const int              MISSED_BEAT_THRESH = 3;
 // ===== 関数 =====
 // フォトトランジスタの割り込み
 void photoISR() {
-  high = digitalRead(PHOTO_PIN);
-  if (high) {
-    if (!stateHigh) {
-      unsigned long now = millis();
-      stateHigh = true;
-      if (now - lastBeatTime > 200) {  // 200ms以内の再検知は無視（300BPM相当）
-        beatDetected    = true;
-        currentBeatTime = now;
-        lastBeatTime    = now;
-      };
-    };
+  int photoRaw = analogRead(PHOTO_PIN);
+  photoValue = (float)photoRaw / 1023.0 * 100.0;
+  if (photoValue >= 45.0) high = true;
+  else high = false;
+  if (high && !stateHigh) {
+    beatDetected = true;
+    currentBeatTime = millis();
+    lastBeatTime = currentBeatTime;
+    stateHigh = true;
   }
   else stateHigh = false;
 };
@@ -48,13 +47,13 @@ void readPhoto() {
 const char* detectColor(float r, float g, float b) {
   struct ColorRef { float r, g, b; const char* name; };
   static const ColorRef refs[] = {
-    {0.975f, 0.222f, 0.017f, "Red"},
-    {0.130f, 0.957f, 0.261f, "Green"},
-    {0.088f, 0.406f, 0.910f, "Blue"},
-    {0.524f, 0.828f, 0.203f, "Yellow"},
-    {0.082f, 0.754f, 0.653f, "Cyan"},
-    {0.519f, 0.371f, 0.770f, "Magenta"},
-    {0.364f, 0.717f, 0.596f, "White"}
+    {0.3286f, 0.9117f, 0.2466f, "YellowGreen"},
+    {0.0711f, 0.9587f, 0.2755f, "Green"},
+    {0.0367f, 0.7935f, 0.6074f, "Teal"},
+    {0.6780f, 0.7182f, 0.1561f, "Yellow"},
+    {0.0425f, 0.7723f, 0.6339f, "Cyan"},
+    {0.7316f, 0.2774f, 0.6228f, "Magenta"},
+    {0.5599f, 0.6678f, 0.4906f, "White"},
   };
   float mag       = sqrt(r*r + g*g + b*b);
   float nr        = r / mag, ng = g / mag, nb = b / mag;
@@ -130,9 +129,9 @@ struct Color {
 };
 
 const Color COLORS[] = {
-  {0x7F, 0x00, 0x00, "Red    "},
-  {0x00, 0x7F, 0x00, "Green  "},
-  {0x00, 0x00, 0x7F, "Blue   "},
+  {0x50, 0xFF, 0x00, "YellowGreen"},
+  {0x00, 0xFF, 0x00, "Green  "},
+  {0x00, 0xFF, 0xDC, "Teal"},
   {0x7F, 0x7F, 0x00, "Yellow "},
   {0x00, 0x7F, 0x7F, "Cyan   "},
   {0x7F, 0x00, 0x7F, "Magenta"},
