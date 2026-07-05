@@ -60,11 +60,11 @@ const int SERVO_FRONT_STEP = SERVO_STEPS / 4;
 
 const uint8_t INSTRUMENT_COLOR[6][3] = {
   {  0,   0,   0},  // 0: 未使用
-  {255,   0,   0},  // 1: ピアノ       (Red)
-  {  0, 255,   0},  // 2: 鉄琴         (Green)
-  {  0,   0, 255},  // 3: トランペット  (Blue)
-  {255, 255,   0},  // 4: ドラム        (Yellow)
-  {127,   0, 127},  // 5: シンバル      (Magenta)
+  {255,   0,   0},  // 1: Red
+  {  0, 255,   0},  // 2: Green
+  {  0,   0, 255},  // 3: Blue
+  {255, 255,   0},  // 4: Yellow
+  {127,   0, 127},  // 5: Magenta
 };
 
 // ───────────────────────────────────────────
@@ -250,36 +250,31 @@ void updateServo() {
 
 // ===================================================================
 // updateLED()
-//   atBeat（最前点）でキュー更新・色決定
-//   atFront（最前点±1ステップ）で点灯ウィンドウを広げる
+//   最前点（servoStep == SERVO_FRONT_STEP+1）でのみ発光要求をセット
 //   実際の送信は loop() 側で行う
 // ===================================================================
 void updateLED() {
-  uint8_t newR, newG, newB;
-  bool atBeat = (servoStep == SERVO_FRONT_STEP + 1);
-  if (atBeat) {
+  bool atFront = (servoStep == SERVO_FRONT_STEP + 1);
+  if (atFront) {
     if (cueActive) {
       beatCount++;
       if (beatCount % 8 == 0 && cueIndex < cueCount) {
+        // 8拍ごとに次の色を発光
         int cue = cueQueue[cueIndex++];
-        newR = INSTRUMENT_COLOR[cue][0];
-        newG = INSTRUMENT_COLOR[cue][1];
-        newB = INSTRUMENT_COLOR[cue][2];
-        if (cueIndex >= cueCount) cueActive = false;
+        ledR = INSTRUMENT_COLOR[cue][0];
+        ledG = INSTRUMENT_COLOR[cue][1];
+        ledB = INSTRUMENT_COLOR[cue][2];
+        if (cueIndex >= cueCount) cueActive = false;  // 全色終了
       } else {
-        newR = 255; newG = 255; newB = 255;
+        ledR = 255; ledG = 255; ledB = 255;  // 白
       }
     } else {
-      newR = 255; newG = 255; newB = 255;
+      ledR = 255; ledG = 255; ledB = 255;  // 常時白フラッシュ
     }
   } else {
-    newR = 0; newG = 0; newB = 0;
+    ledR = 0; ledG = 0; ledB = 0;
   }
-  // 値が変化したときだけ送信フラグを立てる（毎ステップのブロックを防ぐ）
-  if (newR != ledR || newG != ledG || newB != ledB) {
-    ledR = newR; ledG = newG; ledB = newB;
-    ledUpdateFlag = true;
-  }
+  ledUpdateFlag = true;
 }
 
 // ===================================================================
