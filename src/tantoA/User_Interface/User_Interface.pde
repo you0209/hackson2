@@ -33,10 +33,7 @@ void draw(){
   } else {
     drawButton(225, 220, 150, 50, "フェルマータ", color(100, 100, 200));
   }
-  // キュー開始ボタン（演奏中かつキューあり時にアクティブ）
-  color cueStartColor = (currentStateLabel.equals("演奏中") && cueCount > 0)
-    ? color(220, 120, 0) : color(160, 160, 160);
-  drawButton(225, 280, 150, 50, "キュー開始", cueStartColor);
+  drawButton(225, 280, 150, 50, "キュー開始", color(220, 120, 0));
   
   drawButton(50 , 340, 100, 50, "楽器A", color(100, 100, 100));
   drawButton(150, 340, 100, 50, "楽器B", color(100, 100, 100));
@@ -138,11 +135,9 @@ void mousePressed() {
       sendCommand("FERMATA");
     }
   }
-  // キュー開始ボタン（演奏中かつキューあり時のみ）
+  // キュー開始ボタン
   if (mouseX > 225 && mouseX < 375 && mouseY > 280 && mouseY < 330) {
-    if (currentStateLabel.equals("演奏中") && cueCount > 0) {
-      sendCommand("START_CUE");
-    }
+    sendCommand("START_CUE");
   }
 
   // 楽器ボタン
