@@ -255,26 +255,31 @@ void updateServo() {
 //   実際の送信は loop() 側で行う
 // ===================================================================
 void updateLED() {
+  uint8_t newR, newG, newB;
   bool atBeat = (servoStep == SERVO_FRONT_STEP + 1);
   if (atBeat) {
     if (cueActive) {
       beatCount++;
       if (beatCount % 8 == 0 && cueIndex < cueCount) {
         int cue = cueQueue[cueIndex++];
-        ledR = INSTRUMENT_COLOR[cue][0];
-        ledG = INSTRUMENT_COLOR[cue][1];
-        ledB = INSTRUMENT_COLOR[cue][2];
-        if (cueIndex >= cueCount) cueActive = false;  // 全色終了
+        newR = INSTRUMENT_COLOR[cue][0];
+        newG = INSTRUMENT_COLOR[cue][1];
+        newB = INSTRUMENT_COLOR[cue][2];
+        if (cueIndex >= cueCount) cueActive = false;
       } else {
-        ledR = 255; ledG = 255; ledB = 255;  // 白
+        newR = 255; newG = 255; newB = 255;
       }
     } else {
-      ledR = 255; ledG = 255; ledB = 255;  // 常時白フラッシュ
+      newR = 255; newG = 255; newB = 255;
     }
   } else {
-    ledR = 0; ledG = 0; ledB = 0;
+    newR = 0; newG = 0; newB = 0;
   }
-  ledUpdateFlag = true;
+  // 値が変化したときだけ送信フラグを立てる（毎ステップのブロックを防ぐ）
+  if (newR != ledR || newG != ledG || newB != ledB) {
+    ledR = newR; ledG = newG; ledB = newB;
+    ledUpdateFlag = true;
+  }
 }
 
 // ===================================================================
