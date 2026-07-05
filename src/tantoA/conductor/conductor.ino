@@ -255,11 +255,8 @@ void updateServo() {
 //   実際の送信は loop() 側で行う
 // ===================================================================
 void updateLED() {
-  bool atBeat  = (servoStep == SERVO_FRONT_STEP + 1);
-  bool atFront = (servoStep >= SERVO_FRONT_STEP && servoStep <= SERVO_FRONT_STEP + 2);
-
+  bool atBeat = (servoStep == SERVO_FRONT_STEP + 1);
   if (atBeat) {
-    // 拍の瞬間：キュー更新と色決定
     if (cueActive) {
       beatCount++;
       if (beatCount % 8 == 0 && cueIndex < cueCount) {
@@ -274,11 +271,9 @@ void updateLED() {
     } else {
       ledR = 255; ledG = 255; ledB = 255;  // 常時白フラッシュ
     }
-  } else if (!atFront) {
-    // ウィンドウ外：消灯
+  } else {
     ledR = 0; ledG = 0; ledB = 0;
   }
-  // atFront && !atBeat: 前後ウィンドウ内 → ledR/G/B を維持して点灯継続
   ledUpdateFlag = true;
 }
 
