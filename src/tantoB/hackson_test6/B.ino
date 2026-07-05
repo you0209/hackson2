@@ -1,7 +1,7 @@
 // ===== 変数定義 =====
 //カラーセンサ
 const char* colorName       = "Unknown";
-const char* PLAY_COLOR_NAME = "Green";
+const char* PLAY_COLOR_NAME = "Red";
 int         colorIndex      = -1;
 
 // フォトトランジスタ
@@ -52,13 +52,13 @@ const char* detectColor(uint16_t r, uint16_t g, uint16_t b, int& outIndex) {
   struct ColorRef { float r, g, b; const char* name; };
 
   static const ColorRef refs[] = {
-    {0.3286f, 0.9117f, 0.2466f, "YellowGreen"},
-    {0.0711f, 0.9587f, 0.2755f, "Green"},
-    {0.0367f, 0.7935f, 0.6074f, "Teal"},
-    {0.6780f, 0.7182f, 0.1561f, "Yellow"},
-    {0.0425f, 0.7723f, 0.6339f, "Cyan"},
-    {0.7316f, 0.2774f, 0.6228f, "Magenta"},
-    {0.5599f, 0.6678f, 0.4906f, "White"},
+    {0.9971f, 0.0761f, 0.0000f, "Red"},
+    {0.0507f, 0.9692f, 0.2409f, "Green"},
+    {0.0036f, 0.2950f, 0.9555f, "Blue"},
+    {0.5271f, 0.8306f, 0.1798f, "Yellow"},
+    {0.0344f, 0.7824f, 0.6219f, "Cyan"},
+    {0.8517f, 0.2174f, 0.4769f, "Magenta"},
+    {0.4008f, 0.7343f, 0.5482f, "White"},
   };
   const int refCount = sizeof(refs) / sizeof(refs[0]);
 
@@ -137,13 +137,13 @@ struct Color {
 };
 
 const Color COLORS[] = {
-  {0x50, 0xFF, 0x00, "YellowGreen"},
+  {0xFF, 0x00, 0x00, "Red    "},
   {0x00, 0xFF, 0x00, "Green  "},
-  {0x00, 0xFF, 0xDC, "Teal"},
-  {0x7F, 0x7F, 0x00, "Yellow "},
-  {0x00, 0x7F, 0x7F, "Cyan   "},
-  {0x7F, 0x00, 0x7F, "Magenta"},
-  {0x7F, 0x7F, 0x7F, "White  "},
+  {0x00, 0x00, 0xFF, "Blue   "},
+  {0xFF, 0xFF, 0x00, "Yellow "},
+  {0x00, 0xFF, 0xFF, "Cyan   "},
+  {0xFF, 0x00, 0x7F, "Magenta"},
+  {0xFF, 0xFF, 0xFF, "White  "},
 };
 const int           COLOR_COUNT       = sizeof(COLORS) / sizeof(COLORS[0]);
 const unsigned long COLOR_INTERVAL    = 1000;
