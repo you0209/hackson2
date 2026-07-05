@@ -60,10 +60,10 @@ const int SERVO_FRONT_STEP = SERVO_STEPS / 4;
 
 const uint8_t INSTRUMENT_COLOR[6][3] = {
   {  0,   0,   0},  // 0: 未使用
-  { 80, 255,   0},  // 1: YellowGreen
+  {255,   0,   0},  // 1: Red
   {  0, 255,   0},  // 2: Green
-  {127, 127,   0},  // 3: Yellow
-  {  0, 127, 127},  // 4: Cyan
+  {  0,   0, 255},  // 3: Blue
+  {255, 255,   0},  // 4: Yellow
   {127,   0, 127},  // 5: Magenta
 };
 
@@ -86,6 +86,11 @@ volatile bool  ledUpdateFlag = false;
 volatile uint8_t ledR = 0, ledG = 0, ledB = 0;
 
 volatile int   pendingCue    = 0;
+
+// 事前キューキュー（8拍分）
+uint8_t cueQueue[8] = {0};
+int     cueCount    = 0;   // セット済み数（8になるまでSTART不可）
+int     cueIndex    = 0;   // 再生中の現在位置
 
 String serialBuffer = "";
 
@@ -146,7 +151,13 @@ void loop() {
   String cmd = receiveCommand();
   if (cmd.length() > 0) {
     if (cmd == "START") {
-      changeState(STATE_PREBEAT);
+      if (cueCount < 8) {
+        Serial.print("ERR:CUE_NOT_READY:");
+        Serial.print(cueCount);
+        Serial.println("/8");
+      } else {
+        changeState(STATE_PREBEAT);
+      }
     } else if (cmd == "STOP") {
       changeState(STATE_STOP);
     } else if (cmd == "FERMATA") {
@@ -162,8 +173,19 @@ void loop() {
       setBPM(val);
     } else if (cmd.startsWith("INSTRUMENT:")) {
       int n = cmd.substring(11).toInt();
-      if (n >= 1 && n <= 5 && currentState == STATE_PLAYING) {
-        pendingCue = n;
+      if (n >= 1 && n <= 5) {
+        if (currentState == STATE_STANDBY) {
+          if (cueCount < 8) {
+            cueQueue[cueCount++] = n;
+            Serial.print("CUE:");
+            Serial.print(cueCount);
+            Serial.println("/8");
+          } else {
+            Serial.println("ERR:CUE_FULL");
+          }
+        } else if (currentState == STATE_PLAYING) {
+          pendingCue = n;
+        }
       }
     }
   }
@@ -237,11 +259,19 @@ void updateServo() {
 void updateLED() {
   bool atFront = (servoStep == SERVO_FRONT_STEP + 1);
   if (atFront) {
-    if (pendingCue > 0) {
-      ledR = INSTRUMENT_COLOR[pendingCue][0];
-      ledG = INSTRUMENT_COLOR[pendingCue][1];
-      ledB = INSTRUMENT_COLOR[pendingCue][2];
+    int cue = 0;
+    if (cueIndex < 8) {
+      // 事前セット済みキューを順番に使う
+      cue = cueQueue[cueIndex++];
+    } else if (pendingCue > 0) {
+      // キュー使い切り後はリアルタイム指定
+      cue = pendingCue;
       pendingCue = 0;
+    }
+    if (cue > 0) {
+      ledR = INSTRUMENT_COLOR[cue][0];
+      ledG = INSTRUMENT_COLOR[cue][1];
+      ledB = INSTRUMENT_COLOR[cue][2];
     } else {
       ledR = 255; ledG = 255; ledB = 255;  // 通常フラッシュ：白
     }
@@ -332,11 +362,15 @@ void changeState(State s) {
       servoStep    = 0;
       prebeatCount = 0;
       pendingCue   = 0;
+      cueCount     = 0;
+      cueIndex     = 0;
+      memset(cueQueue, 0, sizeof(cueQueue));
       Serial.println("STATE:STANDBY");
       break;
     case STATE_PREBEAT:
       servoStep    = 0;
       prebeatCount = 0;
+      cueIndex     = 0;
       Serial.println("STATE:PREBEAT");
       break;
     case STATE_PLAYING:
