@@ -169,7 +169,7 @@ void loop() {
       if (currentState == STATE_PLAYING && cueCount > 0) {
         cueActive  = true;
         cueIndex   = 0;
-        beatCount  = 0;
+        beatCount  = 7;  // 次の拍で即座に1色目を発光
         Serial.println("CUE_ACTIVE");
       }
     } else if (cmd.startsWith("INSTRUMENT:")) {
