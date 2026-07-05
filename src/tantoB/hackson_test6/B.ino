@@ -2,6 +2,7 @@
 //カラーセンサ
 const char* colorName       = "Unknown";
 const char* PLAY_COLOR_NAME = "Green";
+int         colorIndex      = -1;
 
 // フォトトランジスタ
 bool  beatDetected = false;
@@ -47,8 +48,9 @@ void readPhoto() {
 };
 
 // rgbより色を判定
-const char* detectColor(float r, float g, float b) {
+const char* detectColor(uint16_t r, uint16_t g, uint16_t b, int& outIndex) {
   struct ColorRef { float r, g, b; const char* name; };
+
   static const ColorRef refs[] = {
     {0.3286f, 0.9117f, 0.2466f, "YellowGreen"},
     {0.0711f, 0.9587f, 0.2755f, "Green"},
@@ -58,16 +60,19 @@ const char* detectColor(float r, float g, float b) {
     {0.7316f, 0.2774f, 0.6228f, "Magenta"},
     {0.5599f, 0.6678f, 0.4906f, "White"},
   };
-  float mag       = sqrt(r*r + g*g + b*b);
-  float nr        = r / mag, ng = g / mag, nb = b / mag;
+  const int refCount = sizeof(refs) / sizeof(refs[0]);
+
+  float mag = sqrt((float)r*r + (float)g*g + (float)b*b);
+  //if (mag < 100) return "Unknown";  // 暗すぎて判別不能
+
+  float nr = r / mag, ng = g / mag, nb = b / mag;
+
   float bestScore = -1;
-  const char* bestName  = "Unknown";
-  for (const auto& ref : refs) {
-    float score = nr*ref.r + ng*ref.g + nb*ref.b;
-    if (score > bestScore) {
-      bestScore = score;
-      bestName  = ref.name;
-    };
+  const char* bestName = "Unknown";
+  outIndex = -1;
+  for (int i = 0; i < refCount; i++) {
+    float score = nr*refs[i].r + ng*refs[i].g + nb*refs[i].b;
+    if (score > bestScore) { bestScore = score; bestName = refs[i].name; outIndex = i; }
   };
   return bestName;
 };
@@ -75,7 +80,7 @@ const char* detectColor(float r, float g, float b) {
 // カラーセンサの値を平滑化しcolorNameに色を代入
 void readColor() {
   AE_S13683_LEDResult result = colorSensor.getColorSensorResultOneshot();
-  colorName = detectColor(result.red, result.green, result.blue);
+  colorName = detectColor(result.red, result.green, result.blue, colorIndex);
 };
 
 // フォトトランジスタの値より次の拍を予測
@@ -106,21 +111,18 @@ void updateState() {
       if (beatDetected && detectCount >= 2) {
         prebeatCount = 0;
         state        = PREBEAT;
-        Serial.println("PREBEAT");
       };
       break;
     };
     case PREBEAT: {
       if (prebeatCount >= PREBEAT_THRESH) {
         state = PLAYING;
-        Serial.println("PLAYING");
       };
       break;
     };
     case PLAYING: {
       if (millis() - lastBeatTime > (unsigned long)(estimatedBeatInterval * MISSED_BEAT_THRESH)) {
         state = IDLE;
-        Serial.println("IDLE");
       };
       break;
     };
@@ -181,6 +183,7 @@ void showMatrix() {
   frame[state][1] = 1;
   if (!isPlaying) frame[0][2] = 1;
   else frame[1][2] = 1;
+  if (colorIndex != -1) frame[colorIndex][3] = 1;
   matrix.renderBitmap(frame, 8, 12);
 };
 
@@ -189,7 +192,6 @@ void B_loop() {
   led();
   photoISR();
   if (beatDetected) {
-    Serial.println("detect");
     beatFlashUntil  = millis() + BEAT_FLASH_MS;
     detectCount++;
     readColor();
