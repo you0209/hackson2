@@ -38,6 +38,8 @@
 2026-07-03 & 担当B（長野・慶田） & 第3章 担当B 詳細設計 & 関数変更：\texttt{readIr()・calibrate()・updateIrAverage()・detectIrPeak()・predictBeatByIr()・updateTempoByIr()・detectFermata()}を廃止，\texttt{detectColor()・readColor()}を追加，\texttt{detectPhotoBeat()}を\texttt{photoISR()}に変更 \\
 2026-07-03 & 24G1056 : 慶田 優 & 第1章 プロジェクト概要・スコープ（common） & 赤外線センサ（GP2Y0A21YK）を廃止しカラーセンサ（S13683）に置き換え．プロジェクト目的・独自性・成果物・FBS説明・部品一覧・リスク表の赤外線センサ関連記述をカラーセンサに更新（計8箇所） \\
 2026-07-03 & 24G1056 : 慶田 優 & 第2章 担当A詳細設計（部品一覧・ユニット構成） & 反射板（腕）の赤外線反射素材記述を削除，指揮用LEDをカラーLED（OST4ML8132A）に変更，子機搭載センサの説明を赤外線測距センサからカラーセンサ（S13683）に更新 \\
+2026-07-05 & 担当B（長野・慶田） & HW：センサ土台・遮光板 & センサ土台（遮光板含む）を作成。S13683をLED側面から読み取る縦90度構成とし，環境光の影響を低減。カラーキャリブレーションを実施し現行5色（Red/Green/Blue/Yellow/Magenta）での安定認識を確認 \\
+2026-07-05 & 24G1056 : 慶田 優 & SW：担当A conductor.ino & 指揮者帽の制御を変更。演奏開始前に色の順番（最大5色）を事前セットし，演奏中にキュー開始ボタンを押すと8拍ごとに順番に発光する方式を実装。Processing GUIにキュー開始ボタン・キューカウンター表示を追加 \\
 
 \bottomrule
 \endfoot
