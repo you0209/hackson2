@@ -1,181 +1,106 @@
-// 赤外線センサ
-volatile float irDistance = 0.0f;
-const int IR_WINDOW_SIZE = 3;
-float irDistanceBuffer[IR_WINDOW_SIZE] = {0.0f};
-float calibratedIrValue = 0.0f;
-float previousCalibratedIrValue = 0.0f;
-
-// ピーク検出用
-const int IR_PEAK_WINDOW_SIZE = 3;
-float calibratedIrHistory[IR_PEAK_WINDOW_SIZE] = {0.0f};
-const float IR_PEAK_THRESH = 60.0f;
-const float IR_PEAK_MARGIN = 3.0f;
+// ===== 変数定義 =====
+//カラーセンサ
+const char* colorName       = "Unknown";
+const char* PLAY_COLOR_NAME = "Yellow";
+int         colorIndex      = -1;
 
 // フォトトランジスタ
-int photoValue = 0;
-float calibratedPhotoValue = 0.0f;
-const float BEAT_DETECT_THRESH = 50.0f;
-const float PERFORM_START_THRESH_MIN = 60.0f;
-const float PERFORM_START_THRESH_MAX = 80.0f;
-bool beatDetected = false;
-bool photoHigh = false;
-
-// キャリブレーション
-unsigned long startCalibrateTime = 0;
-const unsigned long CALIBRATE_THRESH = 5000;
-float irMax = 0.0f;
-float irMin = 9999.0f;
-int photoMax = 0;
-int photoMin = 9999;
+bool  beatDetected = false;
+int   detectCount  = 0;
+bool  high         = false;
+bool  stateHigh    = false;
+float photoValue   = 0.0;
 
 // EMA
-float estimatedBeatInterval = 1000.0f;
-float emaAlpha = 0.2f;
-unsigned long previousBeatTime = 0;
-unsigned long predictedIrBeatTime = 0;
-const float TEMPO_CHANGE_THRESH = 10.0f;
-bool isTempoChanged = false;
-float previousNextBeatTime = 0;
+float         estimatedBeatInterval = 1000.0f;
+float         emaAlpha              = 0.2f;
+unsigned long previousBeatTime      = 0;
+const float   TEMPO_CHANGE_THRESH   = 10.0f;
+float         previousNextBeatTime  = 0;
 
 // 状態変化
-int prebeatCount = 0;
-const int PREBEAT_THRESH = 4;
-int stableCount = 0;
-const int STABLE_THRESH = 3;
-const float STOP_THRESH = 5.0f;
-int staticCount = 0;
-const int FERMATA_THRESH = 3;
-unsigned long lastBeatTime = 0;
-const int MISSED_BEAT_THRESH = 3;
-bool isCalibrated = false;
+const char*            START_COLOR_NAME   = "Red";
+int                    prebeatCount       = 0;
+const int              PREBEAT_THRESH     = 4;
+const int              MISSED_BEAT_THRESH = 3;
 
-// その他
-const float V_REF = 5.0f;
-const int INSTRUMENT_ID = 0;
+// ===== 関数 =====
+// フォトトランジスタの割り込み
+void photoISR() {
+  unsigned long now = millis();
+  if (now - lastBeatTime >= 200) {
+    int photoRaw = analogRead(PHOTO_PIN);
+    photoValue = (float)photoRaw / 1023.0 * 100.0;
+    if (photoValue >= 40.0) high = true;
+    else high = false;
+    if (high && !stateHigh) {
+      beatDetected = true;
+      currentBeatTime = millis();
+      lastBeatTime = currentBeatTime;
+      stateHigh = true;
+    }
+    else stateHigh = false;
+  };
+};
 
-
-// フォトトランジスタの値を取得、キャリブレート
 void readPhoto() {
-  photoValue = analogRead(PHOTO_PIN);
-  if (photoMax > photoMin) {
-    calibratedPhotoValue = (float)(photoValue - photoMin) * 100.0f / (float)(photoMax - photoMin);
+  int raw = analogRead(PHOTO_PIN);
+};
+
+// rgbより色を判定
+const char* detectColor(uint16_t r, uint16_t g, uint16_t b, int& outIndex) {
+  struct ColorRef { float r, g, b; const char* name; };
+
+  static const ColorRef refs[] = {
+    {0.9971f, 0.0761f, 0.0000f, "Red"},
+    {0.0507f, 0.9692f, 0.2409f, "Green"},
+    {0.0036f, 0.2950f, 0.9555f, "Blue"},
+    {0.5271f, 0.8306f, 0.1798f, "Yellow"},
+    {0.0344f, 0.7824f, 0.6219f, "Cyan"},
+    {0.8517f, 0.2174f, 0.4769f, "Magenta"},
+    {0.4008f, 0.7343f, 0.5482f, "White"},
   };
-};
+  const int refCount = sizeof(refs) / sizeof(refs[0]);
 
-// 赤外線センサの値を取得
-void readIr() {
-  int irRaw = analogRead(IR_PIN);
-  float irVoltage = irRaw * (V_REF / 1023.0f);
-  irDistance = 27.728f * pow(irVoltage, -1.2045f);
+  float mag = sqrt((float)r*r + (float)g*g + (float)b*b);
+  //if (mag < 100) return "Unknown";  // 暗すぎて判別不能
 
-  for (int i = IR_WINDOW_SIZE - 1; i > 0; i--) irDistanceBuffer[i] = irDistanceBuffer[i - 1];
-  irDistanceBuffer[0] = irDistance;
-};
+  float nr = r / mag, ng = g / mag, nb = b / mag;
 
-// キャリブレーション時の処理
-void calibrate() {
-  if (irDistance > irMax) irMax = irDistance;
-  if (irDistance < irMin) irMin = irDistance;
-
-  if (photoValue > photoMax) photoMax = photoValue;
-  if (photoValue < photoMin) photoMin = photoValue;
-};
-
-// 取得距離を平滑化、キャリブレート
-void updateIrAverage() {
-  float total = 0.0f;
-  for (int i = 0; i < IR_WINDOW_SIZE; i++) total += irDistanceBuffer[i];
-  previousCalibratedIrValue = calibratedIrValue;
-  calibratedIrValue = total / (float)IR_WINDOW_SIZE;
-  if (irMax > irMin) {
-    calibratedIrValue = (calibratedIrValue - irMin) / (irMax - irMin) * 100.0f;
+  float bestScore = -1;
+  const char* bestName = "Unknown";
+  outIndex = -1;
+  for (int i = 0; i < refCount; i++) {
+    float score = nr*refs[i].r + ng*refs[i].g + nb*refs[i].b;
+    if (score > bestScore) { bestScore = score; bestName = refs[i].name; outIndex = i; }
   };
-  for (int i = IR_PEAK_WINDOW_SIZE - 1; i > 0; i--) calibratedIrHistory[i] = calibratedIrHistory[i - 1];
-  calibratedIrHistory[0] = calibratedIrValue;
+  return bestName;
 };
 
-// 距離の山を検知
-bool detectIrPeak() {
-  float current = calibratedIrHistory[0];
-  float center = calibratedIrHistory[1];
-  float previous = calibratedIrHistory[2];
-  if (
-    center > IR_PEAK_THRESH &&
-    (center - current) > IR_PEAK_MARGIN &&
-    (center - previous) > IR_PEAK_MARGIN
-  ) {
-    return true;
-  }
-  else return false;
-};
-
-// 加速度より振り下ろし時刻を予測
-void predictBeatByIr() {};
-
-// フォトトランジスタの値より拍を判定
-void detectPhotoBeat() {
-  if (!photoHigh && calibratedPhotoValue >= BEAT_DETECT_THRESH) {
-    if (
-        state != IDLE &&
-        state != CALIBRATE && state != PREBEAT &&
-        !isPlaying &&
-        calibratedPhotoValue >= PERFORM_START_THRESH_MIN &&
-        calibratedPhotoValue <= PERFORM_START_THRESH_MAX
-      ) isPlaying = true;
-    photoHigh = true;
-    currentBeatTime = millis();
-    lastBeatTime = currentBeatTime;
-    beatDetected = true;
-    if (state == PREBEAT) prebeatCount++;
-  }
-  else if (photoHigh && calibratedPhotoValue < BEAT_DETECT_THRESH - 20.0f) photoHigh = false;
+// カラーセンサの値を平滑化しcolorNameに色を代入
+void readColor() {
+  AE_S13683_LEDResult result = colorSensor.getColorSensorResultOneshot();
+  colorName = detectColor(result.red, result.green, result.blue, colorIndex);
 };
 
 // フォトトランジスタの値より次の拍を予測
 void updateTempoByPhoto() {
   if (previousBeatTime != 0) {
     float measuredBeatInterval = currentBeatTime - previousBeatTime;
-    float tempoErrorRate = abs(measuredBeatInterval - estimatedBeatInterval) / estimatedBeatInterval * 100.0f;
-    if (state != PREBEAT && tempoErrorRate > TEMPO_CHANGE_THRESH) {
-      isTempoChanged = true;
+    float tempoErrorRate       = abs(measuredBeatInterval - estimatedBeatInterval) / estimatedBeatInterval * 100.0f;
+    if (state != PREBEAT && tempoErrorRate > TEMPO_CHANGE_THRESH)
       estimatedBeatInterval = measuredBeatInterval;
-    }
-    else estimatedBeatInterval = emaAlpha * measuredBeatInterval + (1.0f - emaAlpha) * estimatedBeatInterval;
-    previousBeatTime = currentBeatTime;
+    else 
+      estimatedBeatInterval = emaAlpha * measuredBeatInterval + (1.0f - emaAlpha) * estimatedBeatInterval;
+    previousBeatTime     = currentBeatTime;
     previousNextBeatTime = nextBeatTime;
-    nextBeatTime = currentBeatTime + (unsigned long)estimatedBeatInterval;
+    nextBeatTime         = currentBeatTime + (unsigned long)estimatedBeatInterval;
   }
   else {
-    previousBeatTime = currentBeatTime;
+    previousBeatTime     = currentBeatTime;
     previousNextBeatTime = nextBeatTime;
-    nextBeatTime = currentBeatTime * 2;
+    nextBeatTime         = currentBeatTime * 2;
   };
-};
-
-// 赤外線センサの値より現在の拍を予測
-void updateTempoByIr() {
-  float predictionError = abs((long)nextBeatTime - (long)predictedIrBeatTime) / estimatedBeatInterval * 100.0f;
-  if (state != PREBEAT && predictionError > TEMPO_CHANGE_THRESH) {
-    isTempoChanged = true;
-    estimatedBeatInterval = predictedIrBeatTime - currentBeatTime;
-    nextBeatTime = predictedIrBeatTime;
-  };
-};
-
-// フェルマータを判定
-bool detectFermata() {
-  unsigned long currentTime = millis();
-  if (currentTime > nextBeatTime + (unsigned long)(estimatedBeatInterval / 4)) {
-    if (abs(calibratedIrValue - previousCalibratedIrValue) < STOP_THRESH) {
-      staticCount++;
-      if (staticCount >= FERMATA_THRESH) {
-        staticCount = 0;
-        return true;
-      };
-    }
-    else staticCount = 0;
-  };
-  return false;
 };
 
 // 状態変化処理
@@ -183,125 +108,101 @@ void updateState() {
   switch (state) {
     case IDLE: {
       isPlaying = false;
-      if (true) {
-        if (!isCalibrated) {
-          irMax = 0.0f;
-          irMin = 9999.0f;
-          photoMax = 0;
-          photoMin = 9999;
-          startCalibrateTime = millis();
-          state = CALIBRATE;
-        }
-        else {
-          prebeatCount = 0;
-          state = PREBEAT;
-        };
-      };
-      break;
-    };
-    case CALIBRATE: {
-      calibrate();
-      if (millis() - startCalibrateTime >= CALIBRATE_THRESH) {
-        isCalibrated = true;
+      if (beatDetected && detectCount >= 2) {
         prebeatCount = 0;
-        state = PREBEAT;
+        state        = PREBEAT;
       };
       break;
     };
     case PREBEAT: {
       if (prebeatCount >= PREBEAT_THRESH) {
-        prebeatCount = 0;
         state = PLAYING;
       };
       break;
     };
     case PLAYING: {
-      if (false) {
-        state = FERMATA;
-      }
-      else if (isTempoChanged) {
-        state = TEMPO_CHANGE;
-      }
-      else if (millis() - lastBeatTime > (unsigned long)(estimatedBeatInterval * MISSED_BEAT_THRESH)) {
-        state = IDLE;
-      };
-      break;
-    };
-    case TEMPO_CHANGE: {
-      if (isTempoChanged) stableCount = 0;
-      if (stableCount >= STABLE_THRESH) {
-        stableCount = 0;
-        state = PLAYING;
-      };
       if (millis() - lastBeatTime > (unsigned long)(estimatedBeatInterval * MISSED_BEAT_THRESH)) {
         state = IDLE;
       };
       break;
     };
-    case FERMATA: {
-      if (abs(calibratedIrValue - previousCalibratedIrValue) > STOP_THRESH) {
-        state = PLAYING;
-      };
-      break;
-    };
   };
 };
 
-unsigned long prevmillis = 0;
-bool ledState = false;
-int ledCount = 0;
-const int CHANGE_THRESH = 0;
-bool test = false;
+// ===== テスト用関数 =====
+// led用変数
+struct Color {
+  byte r, g, b;
+  const char* name;
+};
 
+const Color COLORS[] = {
+  {0xFF, 0x00, 0x00, "Red    "},
+  {0x00, 0xFF, 0x00, "Green  "},
+  {0x00, 0x00, 0xFF, "Blue   "},
+  {0xFF, 0xFF, 0x00, "Yellow "},
+  {0x00, 0xFF, 0xFF, "Cyan   "},
+  {0xFF, 0x00, 0x7F, "Magenta"},
+  {0xFF, 0xFF, 0xFF, "White  "},
+};
+const int           COLOR_COUNT       = sizeof(COLORS) / sizeof(COLORS[0]);
+const unsigned long COLOR_INTERVAL    = 1000;
+unsigned long       lastColorChange   = 0;
+int                 currentColorIndex = 0;
+bool                ledHigh           = false;
+
+// led操作
 void led() {
   unsigned long now = millis();
-  if (ledCount == CHANGE_THRESH && !test) {
-    test = true;
+  if (!ledHigh) {
+    if (now - lastColorChange >= COLOR_INTERVAL) {
+      currentColorIndex = (currentColorIndex + 1) % COLOR_COUNT;
+      setLEDColor(COLORS[currentColorIndex].r,
+                  COLORS[currentColorIndex].g,
+                  COLORS[currentColorIndex].b);
+      lastColorChange = millis(); // ← setLEDColor後に取る
+      ledHigh = true;
     };
-  if (ledCount < CHANGE_THRESH && now - prevmillis >= 1000 && !ledState) {
-    ledCount++;
-    analogWrite(LED_PIN, 255);
-    ledState = true;
-    prevmillis = now;
-  }
-  else if (ledCount >= CHANGE_THRESH && now - prevmillis >= 1000 && !ledState) {
-    ledCount++;
-    analogWrite(LED_PIN, 255);
-    ledState = true;
-    prevmillis = now;
-  }
-  else if (now - prevmillis >= 10 && ledState) {
-    analogWrite(LED_PIN, 0);
-    ledState = false;
-    prevmillis = now;
+  } else {
+    if (now - lastColorChange >= 10) {
+      setLEDColor(0x00, 0x00, 0x00);
+      lastColorChange = millis(); // ← こっちも
+      ledHigh = false;
+    };
   };
 };
 
-// ビートフラッシュ用タイマー
-unsigned long beatFlashUntil = 0;
-const unsigned long BEAT_FLASH_MS = 150;
+// matrix用変数
+unsigned long       beatFlashUntil = 0;
+const unsigned long BEAT_FLASH_MS  = 150;
 
-// state enum の順番: IDLE=0, CALIBRATE=1, PREBEAT=2, PLAYING=3, TEMPO_CHANGE=4, FERMATA=5
+// matrix表示
 void showMatrix() {
   uint8_t frame[8][12] = {};
-  if (millis() < beatFlashUntil) frame[0][0] = 1; // BEAT → (0,0)
-  frame[state][1] = 1;                             // state → col1, row=state番号
-  frame[i][2] = 1;
+  if (millis() < beatFlashUntil) frame[0][0] = 1;
+  frame[state][1] = 1;
+  if (!isPlaying) frame[0][2] = 1;
+  else frame[1][2] = 1;
+  if (colorIndex != -1) frame[colorIndex][3] = 1;
   matrix.renderBitmap(frame, 8, 12);
-}
+};
 
+// ===== メインループ =====
 void B_loop() {
   led();
-  readPhoto();
-  detectPhotoBeat();
+  photoISR();
   if (beatDetected) {
-    beatFlashUntil = millis() + BEAT_FLASH_MS;
-    isTempoChanged = false;
-    updateTempoByPhoto();
-    beatDetected = false;
-    beatUpdated = true;
-    stableCount++;
+    beatFlashUntil  = millis() + BEAT_FLASH_MS;
+    detectCount++;
+    readColor();
+    if (state == PREBEAT) prebeatCount++;
+    if (state != IDLE) {
+      if (!isPlaying && strcmp(colorName, PLAY_COLOR_NAME) == 0) isPlaying = true;
+      updateTempoByPhoto();
+      beatUpdated = true;
+    };
   };
   updateState();
   showMatrix();
+  beatDetected = false;
 };
