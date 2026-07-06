@@ -97,7 +97,7 @@ void C_loop() {
       Serial.print(", noteIndex: ");
       Serial.print(noteIndex);
       Serial.print(", cahpterBeatCount: ");
-      Serial.println(chapterbeatCount);
+      Serial.println(chapterBeatCount);
       note = score[noteIndex][0];
       vel  = score[noteIndex][1];
       note_long = score[noteIndex][2];
