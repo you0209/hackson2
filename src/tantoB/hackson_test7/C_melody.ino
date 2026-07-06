@@ -1,5 +1,6 @@
 int noteIndex = 0; //現在の音符ポインタ
 unsigned long sendTime = 0; //シリアル通信を行う時間
+unsigned long present_BeatTime;//currentBeatTimeに補正値をかけた値
 uint8_t note_off = 1; //前の音の終了
 uint8_t note = 0; //音名インデックス（休符＝7）
 uint8_t vel = 0; //音の強さ（0~127）
@@ -70,6 +71,7 @@ void C_loop() {
   else {
     reset = false;
     if (beatUpdated && sounded) {
+      chapterBeatCount++;
       if (chapterBeatCount >= CHAPTER_INTERVAL+1) {
         chapterIndex++;
         chapterBeatCount = 0;
@@ -83,26 +85,16 @@ void C_loop() {
           if (score[noteIndex][2] == 8) beatIndex -= 0.5;
           if (score[noteIndex][2] == 4) beatIndex -= 1.0;
           if (score[noteIndex][2] == 2) beatIndex -= 2.0;
-          noteIndex ++;
+          noteIndex++;
         };
       };
-      if (noteIndex >= SCORE_LEN) {
-        chapterIndex = 0;
-        chapterBeatCount = 0;
-        noteIndex = 0;
-      };
-      Serial.print("chapterIndex: ");
-      Serial.print(chapterIndex);
-      Serial.print(", noteIndex: ");
-      Serial.print(noteIndex);
-      Serial.print(", cahpterBeatCount: ");
-      Serial.println(chapterBeatCount);
       note = score[noteIndex][0];
       vel  = score[noteIndex][1];
       note_long = score[noteIndex][2];
       sendTime = sendTime_set(nextBeatTime);
+      present_BeatTime = sendTime_set(currentBeatTime);
       if (note_long == 8 && i == 1) {
-        sendTime = currentBeatTime + ( sendTime - currentBeatTime ) * 0.5;
+        sendTime = present_BeatTime + ( sendTime - present_BeatTime ) * 0.5;
       };
       sounded = false;
       beatUpdated = false;
