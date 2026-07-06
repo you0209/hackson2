@@ -88,10 +88,16 @@ void C_loop() {
         };
       };
       if (noteIndex >= SCORE_LEN) {
-          chapterIndex = -1;
-          chapterBeatCount = 0;
-          noteIndex = 0;
-        };
+        chapterIndex = -1;
+        chapterBeatCount = 0;
+        noteIndex = 0;
+      };
+      Serial.print("chapterIndex: ");
+      Serial.print(chapterIndex);
+      Serial.print(", noteIndex: ");
+      Serial.print(noteIndex);
+      Serial.print(", cahpterBeatCount: ");
+      Serial.println(chapterbeatCount);
       note = score[noteIndex][0];
       vel  = score[noteIndex][1];
       note_long = score[noteIndex][2];
