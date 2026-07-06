@@ -63,7 +63,6 @@ void C_loop() {
       chapterBeatCount = 0;
       beatUpdated = false;
       sounded = false;
-      canSound = false;
       Serial.write(note_off);
       reset = true;
     };
