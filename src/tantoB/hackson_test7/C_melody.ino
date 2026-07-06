@@ -6,7 +6,7 @@ uint8_t vel = 0; //音の強さ（0~127）
 uint8_t note_long = 0; //音の長さ
 bool sounded = true; //音を鳴らしたか
 bool reset = false;
-int chapterIndex = -1;
+int chapterIndex = 0;
 int chapterBeatCount = 0;
 const int CHAPTER_INTERVAL = 4;
 int i = 0;
@@ -59,7 +59,7 @@ void C_loop() {
       noteIndex = 0;
       sendTime = 0;
       i = 0;
-      chapterIndex = -1;
+      chapterIndex = 0;
       chapterBeatCount = 0;
       beatUpdated = false;
       sounded = false;
@@ -70,7 +70,6 @@ void C_loop() {
   else {
     reset = false;
     if (beatUpdated && sounded) {
-      chapterBeatCount++;
       if (chapterBeatCount >= CHAPTER_INTERVAL+1) {
         chapterIndex++;
         chapterBeatCount = 0;
@@ -88,7 +87,7 @@ void C_loop() {
         };
       };
       if (noteIndex >= SCORE_LEN) {
-        chapterIndex = -1;
+        chapterIndex = 0;
         chapterBeatCount = 0;
         noteIndex = 0;
       };
@@ -115,6 +114,7 @@ void C_loop() {
         Serial.write(vel);
         Serial.write(note_long);
         noteIndex++;
+        chapterIndex++;
         if (i == 0) {
           i++;
         }
@@ -129,6 +129,7 @@ void C_loop() {
         Serial.write(vel);
         Serial.write(note_long);
         noteIndex++;
+        chapterIndex++;
       };
       if (note_long == 2){
         if (i==0){
@@ -140,6 +141,7 @@ void C_loop() {
         }
         else if (i == 1) {
           noteIndex++;
+          chapterIndex++;
           i = 0;
         };
       };
