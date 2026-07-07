@@ -149,41 +149,7 @@ void C_loop() {
         sounded = true;
       }
       else {
-        if (note_long == 8) {
-          Serial.write(note_off);
-          Serial.write(note);
-          Serial.write(vel);
-          Serial.write(note_long);
-          noteIndex++;
-          if (i == 0) {
-            i++;
-          }
-          else if (i == 1) {
-            beatUpdated = true;
-            i = 0;
-          };
-        };
-        if (note_long == 4){
-          Serial.write(note_off);
-          Serial.write(note);
-          Serial.write(vel);
-          Serial.write(note_long);
-          noteIndex++;
-        };
-        if (note_long == 2){
-          if (i==0){
-            Serial.write(note_off);
-            Serial.write(note);
-            Serial.write(vel);
-            Serial.write(note_long);
-            i++;          
-          }
-          else if (i == 1) {
-            sounded = true;
-            noteIndex++;
-            i = 0;
-          };
-        };
+        advanceScore(true);
         sounded = true;
       };
     };
