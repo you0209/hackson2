@@ -127,12 +127,12 @@ class InstrumentUnit {
 
     float[] decayTimes = {
       0.80f,
-      0.45f,
-      1.20f,   // 主モードは長く残る
+      1.50f,
+      1.60f,   // 主モードは長く残る
+      0.55f,
       0.25f,
-      0.25f,
-      0.15f,
-      0.08f    // 高次はごく短い
+      0.30f,
+      0.12f    // 高次はごく短い
     };
 
     GlockenspielInstrument(int noteIndex, float frequency, float maxAmp, int noteLength) {

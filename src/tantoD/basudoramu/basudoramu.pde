@@ -60,16 +60,19 @@ class InstrumentUnit {
       velocityRate * masterVolume;
 
     BassDrumInstrument bass =
-      new BassDrumInstrument(ampRate);
+      new BassDrumInstrument(ampRate, getLengthScale(noteLength));
 
     activeVoices.add(bass);
 
     // 短い打楽器なので playNote で自動的に noteOff させる。
     // 音価（lengthScale）に応じて鳴らす長さを変える（8分=短め, 2分=長め）。
+    // Minim の playNote は内部で duration×(60/tempo) をかけるため、
+    // ここで tempo 分を打ち消して durSec を実秒として扱う（テンポ非依存を保つ）。
     float durSec = BASE_DURATION * getLengthScale(noteLength);
+    float playDur = durSec * (out.getTempo() / 60.0f);
     out.playNote(
       0.0f,
-      durSec,
+      playDur,
       bass
     );
 
@@ -118,9 +121,11 @@ class InstrumentUnit {
     ADSR gateEnv;
 
     float ampRate;
+    float lengthScale;
 
-    BassDrumInstrument(float ampRate) {
+    BassDrumInstrument(float ampRate, float lengthScale) {
       this.ampRate = ampRate;
+      this.lengthScale = lengthScale;
 
       mix = new Summer();
 
@@ -216,21 +221,25 @@ class InstrumentUnit {
 
       // ピッチを素早く深く落とす（キックの「ドッ」という締まった沈み込み）
       bodyPitch.activate(
-        0.05f,
+        0.02f,
         150.0f,
         50.0f
       );
 
       // パンチ成分も素早く落とす（アタックの芯）
       punchPitch.activate(
-        0.03f,
+        0.012f,
         240.0f,
         80.0f
       );
 
       // 低音はタイトに減衰しつつ、パワーを上げて強い「ドッ」にする
+      // 8分音符など短い音価では発音自体が短く、0.55秒の立ち上がりが
+      // 完了する前に音が切れて低音の芯が弱くなるため、音価が短い時だけ
+      // 立ち上がりを詰める（2分・4分音符は元の0.55秒のまま変えない）。
+      float bodyRise = 0.55f * min(1.0f, lengthScale);
       bodyAmp.activate(
-        0.36f,
+        bodyRise,
         1.10f * ampRate,
         0.0f
       );

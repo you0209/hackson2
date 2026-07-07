@@ -237,10 +237,12 @@ class InstrumentUnit {
       // ========================================================
 
       // 主音：ゆっくりめに立ち上がり、強すぎない持続にする
-      // Release は音価（lengthScale）で伸縮させ、余韻の長さを音価に合わせる
+      // Attack・Release とも音価（lengthScale）で伸縮させる。
+      // 固定Attackだと8分音符のような短い音価でも立ち上がりに時間がかかり、
+      // 「発音が遅れて聞こえる」原因になるため、音価が短いほどAttackも短くする。
       mainEnv = new ADSR(
         1.0f,
-        0.075f,           // Attack
+        0.075f * lengthScale,  // Attack（音価が短いほど素早く立ち上がる）
         0.18f,            // Decay
         0.62f,            // Sustain
         0.85f * lengthScale  // Release（余韻を長く）
@@ -249,7 +251,7 @@ class InstrumentUnit {
       // 明るい倍音：最初に出て、少し早めに落ちる
       brightEnv = new ADSR(
         1.0f,
-        0.035f,           // Attack
+        0.035f * lengthScale,  // Attack
         0.22f,            // Decay
         0.30f,            // Sustain
         0.55f * lengthScale  // Release（余韻を長く）
@@ -258,7 +260,7 @@ class InstrumentUnit {
       // 息：最初に少し出て、持続中は薄く残る
       breathEnv = new ADSR(
         1.0f,
-        0.015f,           // Attack
+        0.015f * lengthScale,  // Attack
         0.080f,           // Decay
         0.045f,           // Sustain
         0.35f * lengthScale // Release（余韻を長く）
@@ -327,7 +329,7 @@ class InstrumentUnit {
     }
 
     /*
-      音価コード（noteLength）→ 余韻（Release）の倍率（lengthScale）。
+      音価コード（noteLength）→ 立ち上がり・余韻（Attack/Release）の倍率（lengthScale）。
       2=2分音符（長め） / 4=4分音符（標準） / 8=8分音符（短め）。それ以外は標準扱い。
     */
     float getLengthScale(int noteLength) {

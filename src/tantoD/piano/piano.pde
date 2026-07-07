@@ -41,8 +41,8 @@ class InstrumentUnit {
     float frequency = convertToFrequency(noteIndex);
     float velocityRate = constrain(velocity / 127.0f, 0.0f, 1.0f);
 
-    // 元コードの maxAmp=0.45 を基準にする
-    float maxAmp = 0.45f * velocityRate * masterVolume;
+    // アンサンブルバランス実測に基づき基準振幅を0.45→0.60に引き上げ
+    float maxAmp = 0.60f * velocityRate * masterVolume;
 
     PianoInstrument piano = new PianoInstrument(noteIndex, frequency, maxAmp, noteLength);
     activeVoices.add(piano);
@@ -150,7 +150,7 @@ class InstrumentUnit {
         サステインは0に近い値（ピアノはキーを押している間も自然減衰する）。
         velocityRateを活用し、強打ほど高次倍音が目立つよう振幅を調整。
       */
-      float velocityRate = constrain(maxAmp / 0.45f, 0.0f, 1.0f);
+      float velocityRate = constrain(maxAmp / 0.60f, 0.0f, 1.0f);
 
       /*
         ピアノ最大の特徴「二段減衰（double decay）」を再現する。
@@ -167,15 +167,15 @@ class InstrumentUnit {
       // 基音：プロンプト（速い初期減衰）を 0.70→0.18s に短縮。
       // 本物のピアノは打鍵後0.1〜0.2sで明るい成分が消えて余韻に移行する。
       e1a = new ADSR(maxAmp * 0.55f, 0.002f, 0.18f * lengthScale, 0.0f, 0.30f * lengthScale);
-      e1b = new ADSR(maxAmp * 0.36f, 0.004f, 12.50f * regTail * lengthScale, 0.0f, 0.95f * lengthScale);
+      e1b = new ADSR(maxAmp * 0.36f, 0.004f, 2.50f * regTail * lengthScale, 0.0f, 0.95f * lengthScale);
 
       // 2倍音
       e2a = new ADSR(maxAmp * 0.34f, 0.002f, 0.14f * lengthScale, 0.0f, 0.25f * lengthScale);
-      e2b = new ADSR(maxAmp * 0.20f, 0.003f, 7.80f * regTail * lengthScale, 0.0f, 0.80f * lengthScale);
+      e2b = new ADSR(maxAmp * 0.20f, 0.003f, 1.30f * regTail * lengthScale, 0.0f, 0.80f * lengthScale);
 
       // 3倍音
       e3a = new ADSR(maxAmp * 0.20f, 0.001f, 0.11f * lengthScale, 0.0f, 0.20f * lengthScale);
-      e3b = new ADSR(maxAmp * 0.11f, 0.002f, 4.80f * regTail * lengthScale, 0.0f, 0.60f * lengthScale);
+      e3b = new ADSR(maxAmp * 0.11f, 0.002f, 1.20f * regTail * lengthScale, 0.0f, 0.60f * lengthScale);
 
       // 4倍音
       e4a = new ADSR(maxAmp * (0.11f + 0.07f * velocityRate), 0.001f, 0.08f * lengthScale, 0.0f, 0.15f * lengthScale);
