@@ -1,23 +1,22 @@
 /**
- * Arduino オーケストラ — 指揮者人形ユニット（担当 A）
+ * Arduino オーケストラ — 指揮者人形ユニット（担当 A）スタンドアロン版
  * Arduino Uno R4 WiFi 用ファームウェア
+ * Processing 不要。シリアルターミナルから操作可能。
  *
- * 対応コマンド（Processing → Arduino, 115200bps, 改行終端）:
+ * 対応コマンド（115200bps, 改行終端）:
  *   START        : 予備拍 → 演奏中
  *   STOP         : 演奏停止 → 待機
  *   FERMATA      : フェルマータ開始
  *   RESUME       : フェルマータ解除 → 演奏中
- *   BPM:xxx      : BPM 変更（60〜120 の整数）
- *   INSTRUMENT:n : 楽器キュー（n=1〜5、対応色で最前点1回だけ RGB LED 発光）
+ *   INSTRUMENT:n : 次の最前点で楽器色をワンショット発光（n=1〜5）
  *
- * Arduino → Processing 通知:
- *   STATE:STANDBY / STATE:PREBEAT / STATE:PLAYING / STATE:FERMATA / STATE:STOP
- *   BPM_OK:xxx
+ * LED パターン:
+ *   - 通常拍: White フラッシュ
+ *   - 4拍ごと: Cyan フラッシュ（小節カウント用）
+ *   - INSTRUMENT:n 受信後の次の最前点: 楽器色でワンショット発光
  *
  * 使用 LED: OST4ML8132A（8mm インテリジェント RGB LED）
  *   制御: DIN_H（D2）+ DIN_L（D3）の2線式、各10kΩ経由でLED DINへ合流
- *   データ順: B→G→R（各8bit、計24bit）
- *   タイミング: TH/TN/TL 各1〜100μs
  */
 
 #include <Servo.h>
@@ -44,8 +43,6 @@ enum State {
 // ───────────────────────────────────────────
 // 定数
 // ───────────────────────────────────────────
-const int BPM_MIN     = 60;
-const int BPM_MAX     = 120;
 const int BPM_DEFAULT = 60;
 
 const int SERVO_CENTER    = 30;
@@ -56,8 +53,6 @@ const int SERVO_STEPS      = 20;
 const int SERVO_FRONT_STEP = SERVO_STEPS / 4;
 
 // 楽器ごとの発光色 {R, G, B}（0〜255）
-// インデックス0は未使用、1〜5が楽器A〜E
-
 const uint8_t INSTRUMENT_COLOR[6][3] = {
   {  0,   0,   0},  // 0: 未使用
   {255,   0,   0},  // 1: Red
@@ -80,20 +75,14 @@ uint8_t  timerType = AGT_TIMER;
 int8_t   timerCh   = -1;
 
 volatile State currentState  = STATE_STANDBY;
-volatile int   currentBPM    = BPM_DEFAULT;
 volatile int   servoStep     = 0;
 volatile int   prebeatCount  = 0;
-volatile bool  beatFlag      = false;
 volatile bool  stateChanged  = false;
 volatile bool  ledUpdateFlag = false;
 volatile uint8_t ledR = 0, ledG = 0, ledB = 0;
 
-// カラーキュー（5色分）
-uint8_t cueQueue[5]  = {0};
-int     cueCount     = 0;    // セット済み数
-int     cueIndex     = 0;    // 再生中の現在位置
-bool    cueActive    = false; // START_CUE後にtrue
-int     beatCount    = 0;    // START_CUE後の拍カウント
+int  beatCount      = 0;
+int  autoColorIndex = 1;  // 自動サイクル色インデックス（1〜5）
 
 String serialBuffer = "";
 
@@ -109,7 +98,6 @@ void sendBit(bool bit);
 void ledOff();
 String receiveCommand();
 void changeState(State s);
-void setBPM(int bpm);
 
 // ===================================================================
 // setup()
@@ -120,14 +108,11 @@ void setup() {
   servo.attach(PIN_SERVO);
   servo.write(SERVO_SAFE);
 
-  // OST4ML8132A ピン初期化
-  // 待機状態：DIN_H=LOW, DIN_L=HIGH（データシート参考回路より）
   pinMode(PIN_DIN_H, OUTPUT);
   pinMode(PIN_DIN_L, OUTPUT);
   digitalWrite(PIN_DIN_H, LOW);
   digitalWrite(PIN_DIN_L, HIGH);
 
-  // 消灯
   ledOff();
 
   timerCh = FspTimer::get_available_timer(timerType);
@@ -138,14 +123,13 @@ void setup() {
   setupTimer(BPM_DEFAULT);
 
   Serial.println("READY");
-  Serial.println("STATE:STANDBY");
+  changeState(STATE_PREBEAT);  // 電源ON後に自動スタート
 }
 
 // ===================================================================
 // loop()
 // ===================================================================
 void loop() {
-  // LED更新（ISRからのフラグで受け取り、loop()側で送信）
   if (ledUpdateFlag) {
     ledUpdateFlag = false;
     sendLED(ledR, ledG, ledB);
@@ -158,35 +142,9 @@ void loop() {
     } else if (cmd == "STOP") {
       changeState(STATE_STOP);
     } else if (cmd == "FERMATA") {
-      if (currentState == STATE_PLAYING) {
-        changeState(STATE_FERMATA);
-      }
+      if (currentState == STATE_PLAYING) changeState(STATE_FERMATA);
     } else if (cmd == "RESUME") {
-      if (currentState == STATE_FERMATA) {
-        changeState(STATE_PLAYING);
-      }
-    } else if (cmd.startsWith("BPM:")) {
-      int val = cmd.substring(4).toInt();
-      setBPM(val);
-    } else if (cmd == "START_CUE") {
-      if (currentState == STATE_PLAYING && cueCount > 0) {
-        cueActive  = true;
-        cueIndex   = 0;
-        beatCount  = 0;
-        Serial.println("CUE_ACTIVE");
-      }
-    } else if (cmd.startsWith("INSTRUMENT:")) {
-      int n = cmd.substring(11).toInt();
-      if (n >= 1 && n <= 5) {
-        if (cueCount < 5) {
-          cueQueue[cueCount++] = n;
-          Serial.print("CUE:");
-          Serial.print(cueCount);
-          Serial.println("/5");
-        } else {
-          Serial.println("ERR:CUE_FULL");
-        }
-      }
+      if (currentState == STATE_FERMATA) changeState(STATE_PLAYING);
     }
   }
 
@@ -213,7 +171,6 @@ void onBeatTimer(timer_callback_args_t *args) {
       updateServo();
       updateLED();
       if (servoStep == 0) {
-        beatFlag = true;
         if (currentState == STATE_PREBEAT) {
           prebeatCount++;
           if (prebeatCount >= 4) {
@@ -253,26 +210,23 @@ void updateServo() {
 
 // ===================================================================
 // updateLED()
-//   最前点（servoStep == SERVO_FRONT_STEP+1）でのみ発光要求をセット
-//   実際の送信は loop() 側で行う
+//   最前点でフラッシュ。優先度: 楽器色（8拍ごと自動サイクル）> Cyan（4拍ごと）> White
 // ===================================================================
 void updateLED() {
   bool atFront = (servoStep == SERVO_FRONT_STEP + 1);
   if (atFront) {
-    beatCount++;  // 常時インクリメント
+    beatCount++;
 
-    if (cueActive && beatCount % 8 == 0 && cueIndex < cueCount) {
-      // 8拍ごと: 楽器色（最優先）
-      int cue = cueQueue[cueIndex++];
-      ledR = INSTRUMENT_COLOR[cue][0];
-      ledG = INSTRUMENT_COLOR[cue][1];
-      ledB = INSTRUMENT_COLOR[cue][2];
-      if (cueIndex >= cueCount) cueActive = false;
+    if (beatCount == 8) {
+      // 最初の8拍目のみ: Red
+      ledR = INSTRUMENT_COLOR[1][0];
+      ledG = INSTRUMENT_COLOR[1][1];
+      ledB = INSTRUMENT_COLOR[1][2];
     } else if (beatCount % 4 == 0) {
-      // 4拍ごと: Cyan（小節カウント用）
+      // 4拍ごと: Cyan
       ledR = COLOR_CYAN[0]; ledG = COLOR_CYAN[1]; ledB = COLOR_CYAN[2];
     } else {
-      // その他: 白
+      // その他: White
       ledR = 255; ledG = 255; ledB = 255;
     }
   } else {
@@ -282,50 +236,39 @@ void updateLED() {
 }
 
 // ===================================================================
-// sendLED()  — OST4ML8132A へ 24bit 送信（B→G→R順）
-//   DIN_H/DIN_L を抵抗合成し DIN に VDD/VDD2/0V の3値を作る方式
-//   1: VDD(High)をTH保持 → VDD/2(Mid)をTN保持
-//   0: 0V(Low)をTL保持   → VDD/2(Mid)をTN保持
+// sendLED()
 // ===================================================================
 void sendLED(uint8_t r, uint8_t g, uint8_t b) {
-  // B→G→R の順で送信
   for (int i = 7; i >= 0; i--) sendBit((b >> i) & 0x01);
   for (int i = 7; i >= 0; i--) sendBit((g >> i) & 0x01);
   for (int i = 7; i >= 0; i--) sendBit((r >> i) & 0x01);
-
-  // ラッチ：DIN_H=LOW, DIN_L=HIGH を 3ms 以上保持
   digitalWrite(PIN_DIN_H, LOW);
   digitalWrite(PIN_DIN_L, HIGH);
   delayMicroseconds(3000);
 }
 
 // ===================================================================
-// sendBit()  — 1ビット送信
+// sendBit()
 // ===================================================================
 void sendBit(bool bit) {
-  // OST4ML8132A: DIN_H/DIN_Lを抵抗合成し、DINピンにVDD/VDD2/0Vの3値を作る方式
-  //   HIGH+HIGH => VDD(High)   HIGH+LOW => VDD/2(Mid)   LOW+LOW => 0V(Low)
   if (bit) {
-    // 1: VDD(High) を TH 保持 → VDD/2(Mid) を TN 保持
     digitalWrite(PIN_DIN_H, HIGH);
     digitalWrite(PIN_DIN_L, HIGH);
-    delayMicroseconds(10);  // TH
+    delayMicroseconds(10);
     digitalWrite(PIN_DIN_L, LOW);
-    delayMicroseconds(10);  // TN
+    delayMicroseconds(10);
   } else {
-    // 0: 0V(Low) を TL 保持 → VDD/2(Mid) を TN 保持
     digitalWrite(PIN_DIN_H, LOW);
     digitalWrite(PIN_DIN_L, LOW);
-    delayMicroseconds(10);  // TL
+    delayMicroseconds(10);
     digitalWrite(PIN_DIN_H, HIGH);
-    delayMicroseconds(10);  // TN
+    delayMicroseconds(10);
   }
-  // ここで必ず DIN_H=HIGH, DIN_L=LOW（Mid）で終わる → 次ビットの起点として一貫
   delayMicroseconds(5);
 }
 
 // ===================================================================
-// ledOff()  — LED 消灯
+// ledOff()
 // ===================================================================
 void ledOff() {
   sendLED(0, 0, 0);
@@ -359,21 +302,17 @@ void changeState(State s) {
     case STATE_STANDBY:
       servo.write(SERVO_SAFE);
       ledOff();
-      servoStep    = 0;
-      prebeatCount = 0;
-      cueCount     = 0;
-      cueIndex     = 0;
-      cueActive    = false;
-      beatCount    = 0;
-      memset(cueQueue, 0, sizeof(cueQueue));
+      servoStep       = 0;
+      prebeatCount    = 0;
+      beatCount       = 0;
+      autoColorIndex  = 1;
       Serial.println("STATE:STANDBY");
       break;
     case STATE_PREBEAT:
-      servoStep    = 0;
-      prebeatCount = 0;
-      cueIndex     = 0;
-      cueActive    = false;
-      beatCount    = 0;
+      servoStep       = 0;
+      prebeatCount    = 0;
+      beatCount       = 0;
+      autoColorIndex  = 1;
       Serial.println("STATE:PREBEAT");
       break;
     case STATE_PLAYING:
@@ -387,26 +326,9 @@ void changeState(State s) {
       break;
     case STATE_STOP:
       ledOff();
-      cueActive = false;
       Serial.println("STATE:STOP");
       break;
   }
-}
-
-// ===================================================================
-// setBPM()
-// ===================================================================
-void setBPM(int bpm) {
-  if (bpm < BPM_MIN || bpm > BPM_MAX) {
-    Serial.println("ERR:BPM_RANGE");
-    return;
-  }
-  currentBPM = bpm;
-  beatTimer.stop();
-  beatTimer.end();
-  setupTimer(bpm);
-  Serial.print("BPM_OK:");
-  Serial.println(bpm);
 }
 
 // ===================================================================

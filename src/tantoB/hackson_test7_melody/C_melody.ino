@@ -7,9 +7,8 @@ uint8_t vel = 0; //音の強さ（0~127）
 uint8_t note_long = 0; //音の長さ
 bool sounded = true; //音を鳴らしたか
 bool reset = false;
-int chapterIndex = 0;
-int chapterBeatCount = 0;
-const int CHAPTER_INTERVAL = 4;
+int scoreBeatCount = 0;
+int cyanCount = 0;
 int i = 0;
 const uint8_t score[][3] = {
     {0, 100, 4},//ド　
@@ -60,33 +59,40 @@ void C_loop() {
       noteIndex = 0;
       sendTime = 0;
       i = 0;
-      chapterIndex = 0;
-      chapterBeatCount = 0;
+      scoreBeatCount = 0;
+      cyanCount = 0;
       beatUpdated = false;
       sounded = false;
       Serial.write(note_off);
+      Serial.write((uint8_t)0);
+      Serial.write((uint8_t)0);
+      Serial.write((uint8_t)0);
       reset = true;
     };
   }
   else {
     reset = false;
     if (beatUpdated && sounded) {
-      chapterBeatCount++;
-      if (chapterBeatCount >= CHAPTER_INTERVAL+1) {
-        chapterIndex++;
-        chapterBeatCount = 0;
+      scoreBeatCount++;
+      if (beatMissRecovered) {
+        scoreBeatCount++;
+        beatMissRecovered = false;
       };
-      if (strcmp(colorName, "White") != 0) {
-        chapterIndex++;
-        chapterBeatCount = 0;
-        float beatIndex = (float)chapterIndex * CHAPTER_INTERVAL;
+      if (strcmp(colorName, PLAY_COLOR_NAME) == 0) {
         noteIndex = 0;
-        while (beatIndex > 0.0 && noteIndex < SCORE_LEN) {
-          if (score[noteIndex][2] == 8) beatIndex -= 0.5;
-          if (score[noteIndex][2] == 4) beatIndex -= 1.0;
-          if (score[noteIndex][2] == 2) beatIndex -= 2.0;
-          noteIndex++;
+        scoreBeatCount = 0;
+        cyanCount = 0;
+      } else if (strcmp(colorName, "Cyan") == 0) {
+        cyanCount++;
+        float beatPos = (float)(cyanCount * 4);
+        int newNoteIndex = 0;
+        while (beatPos > 0.0 && newNoteIndex < SCORE_LEN) {
+          if (score[newNoteIndex][2] == 8) beatPos -= 0.5;
+          if (score[newNoteIndex][2] == 4) beatPos -= 1.0;
+          if (score[newNoteIndex][2] == 2) beatPos -= 2.0;
+          newNoteIndex++;
         };
+        if (newNoteIndex < SCORE_LEN) noteIndex = newNoteIndex;
       };
       note = score[noteIndex][0];
       vel  = score[noteIndex][1];
@@ -106,7 +112,7 @@ void C_loop() {
         Serial.write(vel);
         Serial.write(note_long);
         noteIndex++;
-        chapterIndex++;
+        if (noteIndex >= SCORE_LEN) { isPlaying = false; sounded = true; return; };
         if (i == 0) {
           i++;
         }
@@ -121,7 +127,7 @@ void C_loop() {
         Serial.write(vel);
         Serial.write(note_long);
         noteIndex++;
-        chapterIndex++;
+        if (noteIndex >= SCORE_LEN) { isPlaying = false; sounded = true; return; };
       };
       if (note_long == 2){
         if (i==0){
@@ -129,11 +135,11 @@ void C_loop() {
           Serial.write(note);
           Serial.write(vel);
           Serial.write(note_long);
-          i++;          
+          i++;
         }
         else if (i == 1) {
           noteIndex++;
-          chapterIndex++;
+          if (noteIndex >= SCORE_LEN) { isPlaying = false; sounded = true; return; };
           i = 0;
         };
       };
