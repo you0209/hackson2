@@ -23,7 +23,7 @@
 #define PHOTO_PIN     A0
 #define PHOTO_INT_PIN 2
 
-const float PHOTO_THRESH = 40.0f;   // 検出閾値（%）
+const float PHOTO_THRESH = 10.0f;   // 検出閾値（%）
 const int   DEBOUNCE_MS  = 200;     // デバウンス時間
 const unsigned long TIMEOUT_MS = 3000UL; // 3秒光が来なければ終了
 
@@ -70,8 +70,9 @@ void loop() {
       Serial.println("Test started.");
     }
 
-    Serial.print("DETECT:");
-    Serial.println(detectedCount);
+    Serial.print("合計: ");
+    Serial.print(detectedCount);
+    Serial.println("拍");
   }
 
   // タイムアウト判定（テスト開始後）
