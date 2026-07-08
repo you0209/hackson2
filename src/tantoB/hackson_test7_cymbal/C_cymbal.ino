@@ -103,27 +103,6 @@ void C_loop() {
   else {
     reset = false;
     if (beatUpdated && sounded) {
-      scoreBeatCount++;
-      if (beatMissRecovered) {
-        scoreBeatCount++;
-        beatMissRecovered = false;
-      };
-      if (strcmp(colorName, PLAY_COLOR_NAME) == 0) {
-        noteIndex = 0;
-        scoreBeatCount = 0;
-        cyanCount = 0;
-      } else if (strcmp(colorName, "Cyan") == 0) {
-        cyanCount++;
-        float beatPos = (float)(cyanCount * 4);
-        int newNoteIndex = 0;
-        while (beatPos > 0.0 && newNoteIndex < SCORE_LEN) {
-          if (score[newNoteIndex][2] == 8) beatPos -= 0.5;
-          if (score[newNoteIndex][2] == 4) beatPos -= 1.0;
-          if (score[newNoteIndex][2] == 2) beatPos -= 2.0;
-          newNoteIndex++;
-        };
-        if (newNoteIndex < SCORE_LEN) noteIndex = newNoteIndex;
-      };
       note = score[noteIndex][0];
       vel  = score[noteIndex][1];
       note_long = score[noteIndex][2];

@@ -29,7 +29,7 @@ void photoISR() {
   if (now - lastBeatTime >= 200) {
     int photoRaw = analogRead(PHOTO_PIN);
     photoValue = (float)photoRaw / 1023.0 * 100.0;
-    if (photoValue >= 40.0) high = true;
+    if (photoValue >= 10.0) high = true;
     else high = false;
     if (high && !stateHigh) {
       beatDetected = true;
