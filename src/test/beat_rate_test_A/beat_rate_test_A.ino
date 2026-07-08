@@ -28,7 +28,8 @@ const int MAX_BEATS    = 50;   // 何拍テストするか
 const int SERVO_CENTER    = 30;
 const int SERVO_AMPLITUDE = 30;
 const int SERVO_SAFE      =  0;
-const int SERVO_STEPS     = 20;
+const int SERVO_STEPS      = 20;
+const int SERVO_FRONT_STEP = SERVO_STEPS / 4;  // = 5（最前点）
 
 Servo servo;
 FspTimer beatTimer;
@@ -37,7 +38,7 @@ int8_t  timerCh   = -1;
 
 volatile int  servoStep = 0;
 volatile int  beatCount = 0;
-volatile bool beatFlag  = false;
+volatile bool ledFlag   = false;
 volatile bool done      = false;
 
 // ── LED送信 ──────────────────────────────────────
@@ -74,9 +75,10 @@ void onBeatTimer(timer_callback_args_t *args) {
   servo.write(angle);
   servoStep = (servoStep + 1) % SERVO_STEPS;
 
-  if (servoStep == 0) {
+  // conductor.ino と同じく最前点でLEDフラッシュ＆カウント
+  if (servoStep == SERVO_FRONT_STEP + 1) {
     beatCount++;
-    beatFlag = true;
+    ledFlag = true;
     if (beatCount >= MAX_BEATS) done = true;
   }
 }
@@ -112,9 +114,9 @@ void setup() {
 }
 
 void loop() {
-  if (beatFlag) {
-    beatFlag = false;
-    // 白フラッシュ
+  if (ledFlag) {
+    ledFlag = false;
+    // 最前点で白フラッシュ（conductor.ino と同じタイミング）
     sendLED(255, 255, 255);
     delayMicroseconds(30000);  // 30ms 点灯
     sendLED(0, 0, 0);
