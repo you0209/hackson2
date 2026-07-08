@@ -33,11 +33,11 @@ void draw(){
     drawButton(225, 200, 150, 50, "フェルマータ", color(100, 100, 200));
   }
   
-  drawButton(50 , 300, 100, 50, "楽器A", color(100, 100, 100));
-  drawButton(150, 300, 100, 50, "楽器B", color(100, 100, 100));
-  drawButton(250, 300, 100, 50, "楽器C", color(100, 100, 100));
-  drawButton(350, 300, 100, 50, "楽器D", color(100, 100, 100));
-  drawButton(450, 300, 100, 50, "楽器E", color(100, 100, 100));
+  drawInstrumentButton(50 , 290, 100, 65, 1, "ピアノ",    "赤");
+  drawInstrumentButton(150, 290, 100, 65, 2, "鉄琴",      "緑");
+  drawInstrumentButton(250, 290, 100, 65, 3, "トランペット", "青");
+  drawInstrumentButton(350, 290, 100, 65, 4, "バス",      "黄");
+  drawInstrumentButton(450, 290, 100, 65, 5, "シンバル",  "紫");
   
   // 入力フォームの描画
   fill(255);
@@ -80,6 +80,26 @@ void drawButton(int x, int y, int w, int h, String label, color c) {
   text(label, x + w/2, y + h/2);
 }
 
+// 楽器ボタン：IDに対応するLED色で塗り分け＋色名表示
+void drawInstrumentButton(int x, int y, int w, int h, int id, String label, String colorName) {
+  color[] instrColors = {
+    color(80, 80, 80),   // 0: 未使用
+    color(200, 50, 50),  // 1: 赤
+    color(50, 160, 50),  // 2: 緑
+    color(50, 80, 200),  // 3: 青
+    color(180, 160, 0),  // 4: 黄
+    color(150, 0, 150)   // 5: 紫
+  };
+  fill(instrColors[id]);
+  rect(x, y, w, h, 5);
+  fill(255);
+  textSize(15);
+  text(label, x + w/2, y + h/2 - 10);
+  textSize(12);
+  text("(" + colorName + ")", x + w/2, y + h/2 + 12);
+  textSize(16);
+}
+
 // Arduino からの受信
 void serialEvent(Serial p) {
   String line = trim(p.readStringUntil('\n'));
@@ -117,22 +137,12 @@ void mousePressed() {
     }
   }
   
-  //楽器A
-  if (mouseX > 50 && mouseX < 150 && mouseY > 300 && mouseY < 350) {
-    sendCue(1);
-  }
-  if (mouseX > 150 && mouseX < 250 && mouseY > 300 && mouseY < 350) {
-    sendCue(2);
-  }
-  if (mouseX > 250 && mouseX < 350 && mouseY > 300 && mouseY < 350) {
-    sendCue(3);
-  }
-  if (mouseX > 350 && mouseX < 450 && mouseY > 300 && mouseY < 350) {
-    sendCue(4);
-  }
-  if (mouseX > 450 && mouseX < 550 && mouseY > 300 && mouseY < 350) {
-    sendCue(5);
-  }
+  // 楽器1〜5（y=290〜355）
+  if (mouseX > 50  && mouseX < 150 && mouseY > 290 && mouseY < 355) { sendCue(1); }
+  if (mouseX > 150 && mouseX < 250 && mouseY > 290 && mouseY < 355) { sendCue(2); }
+  if (mouseX > 250 && mouseX < 350 && mouseY > 290 && mouseY < 355) { sendCue(3); }
+  if (mouseX > 350 && mouseX < 450 && mouseY > 290 && mouseY < 355) { sendCue(4); }
+  if (mouseX > 450 && mouseX < 550 && mouseY > 290 && mouseY < 355) { sendCue(5); }
 }
 
 void keyPressed() {
