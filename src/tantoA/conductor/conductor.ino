@@ -54,6 +54,7 @@ const int SERVO_SAFE      =  0;
 
 const int SERVO_STEPS      = 20;
 const int SERVO_FRONT_STEP = SERVO_STEPS / 4;
+const int LED_ON_STEPS     = 3;   // 最前点から何ステップ点灯させるか（1ステップ≈50ms@60BPM）
 
 // 楽器ごとの発光色 {R, G, B}（0〜255）
 // インデックス0は未使用、1〜5が楽器A〜E
@@ -258,11 +259,14 @@ void updateServo() {
 // ===================================================================
 void updateLED() {
   bool atFront = (servoStep == SERVO_FRONT_STEP + 1);
+  bool inFlash = (servoStep >= SERVO_FRONT_STEP + 1 &&
+                  servoStep <  SERVO_FRONT_STEP + 1 + LED_ON_STEPS);
+
   if (atFront) {
     beatCount++;  // 常時インクリメント
 
-    if (cueActive && beatCount % 8 == 0 && cueIndex < cueCount) {
-      // 8拍ごと: 楽器色（最優先）
+    if (cueActive && beatCount % 4 == 0 && cueIndex < cueCount) {
+      // 4拍ごと: 楽器色（最優先）
       int cue = cueQueue[cueIndex++];
       ledR = INSTRUMENT_COLOR[cue][0];
       ledG = INSTRUMENT_COLOR[cue][1];
@@ -275,9 +279,10 @@ void updateLED() {
       // その他: 白
       ledR = 255; ledG = 255; ledB = 255;
     }
-  } else {
+  } else if (!inFlash) {
     ledR = 0; ledG = 0; ledB = 0;
   }
+  // inFlash && !atFront の間は前ステップの色を保持
   ledUpdateFlag = true;
 }
 
