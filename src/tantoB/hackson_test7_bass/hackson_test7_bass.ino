@@ -33,7 +33,7 @@ void setup() {
   colorSensor.begin(&Wire);
   colorSensor.colorSensorConfigOneshot(
     AE_S13683_LED::colorSensorGain::GAIN_HIGH,
-    2000  // 最小露光時間 175µs
+    10000  // 最小露光時間 175µs
   );
   colorSensor.ledDriverConfig(false);
 };
