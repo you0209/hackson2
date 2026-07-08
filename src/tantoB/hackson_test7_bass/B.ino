@@ -1,6 +1,6 @@
 // ===== 変数定義 =====
 //カラーセンサ
-const char* PLAY_COLOR_NAME = "Red";
+const char* PLAY_COLOR_NAME = "Blue";
 int         colorIndex      = -1;
 
 // フォトトランジスタ

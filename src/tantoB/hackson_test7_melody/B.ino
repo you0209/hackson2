@@ -1,6 +1,6 @@
 // ===== 変数定義 =====
 //カラーセンサ
-const char* PLAY_COLOR_NAME = "Red";
+const char* PLAY_COLOR_NAME = "Blue";
 int         colorIndex      = -1;
 
 // フォトトランジスタ
@@ -29,7 +29,7 @@ void photoISR() {
   if (now - lastBeatTime >= 200) {
     int photoRaw = analogRead(PHOTO_PIN);
     photoValue = (float)photoRaw / 1023.0 * 100.0;
-    if (photoValue >= 40.0) high = true;
+    if (photoValue >= 10.0) high = true;
     else high = false;
     if (high && !stateHigh) {
       beatDetected = true;
