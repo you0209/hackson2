@@ -108,8 +108,14 @@ void updateTempoByPhoto() {
   predictionCount++;
   Serial.print("[predict] #");
   Serial.print(predictionCount);
-  Serial.print("  nextBeatTime=");
-  Serial.println(nextBeatTime);
+  if (syncStarted) {
+    Serial.print("  nextBeatTime=");
+    Serial.println(nextBeatTime - startTime);
+  } else {
+    // 共通トリガー未検出。基準時刻が定まっていないためraw値のまま出力
+    Serial.print("  nextBeatTime(sync前,raw)=");
+    Serial.println(nextBeatTime);
+  }
 };
 
 // 状態変化処理
