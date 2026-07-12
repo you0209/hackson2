@@ -64,7 +64,7 @@ void setup() {
 
 void loop() {
   if (testDone) return;
-
+  photoISR();
   if (beatDetected) {
     beatDetected = false;
     detectedCount++;
