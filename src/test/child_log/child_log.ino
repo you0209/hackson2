@@ -21,22 +21,11 @@ const char*   colorName       = "Unknown";
 enum          State           {IDLE, PREBEAT, PLAYING};
 State         state           = IDLE;
 
-// ───────────────────────────────────────────
-// 子機間の共通トリガー同期
-//   複数の子機のD4を同じ信号線に共通接続しておき、
-//   その信号が最初にHIGHになった瞬間のmillis()を基準時刻とする。
-//   以降の予測値(nextBeatTime)はこの基準時刻からの相対値で比較できる。
-// ───────────────────────────────────────────
-#define SYNC_PIN 4
-bool          syncStarted = false;  // 基準時刻を確定済みか
-unsigned long startTime   = 0;      // 共通トリガー検出時のmillis()
-
 void setup() {
   pinMode(PHOTO_PIN, INPUT);
   pinMode(LED_PIN,   OUTPUT);
   pinMode(DIN_H,     OUTPUT);
   pinMode(DIN_L,     OUTPUT);
-  pinMode(SYNC_PIN,  INPUT);
   Serial.begin(115200);
   matrix.begin();
   Wire.begin();
@@ -50,12 +39,6 @@ void setup() {
 };
 
 void loop() {
-  if (!syncStarted && digitalRead(SYNC_PIN) == HIGH) {
-    startTime   = millis();
-    syncStarted = true;
-    Serial.print("[sync] SYNC_PIN HIGH検出。startTime=");
-    Serial.println(startTime);
-  }
   B_loop();
   C_loop();
 };

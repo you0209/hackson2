@@ -24,6 +24,8 @@ const int   MISSED_BEAT_THRESH = 3;
 
 // 拍予測ログ
 unsigned long predictionCount = 0;  // nextBeatTimeを更新した回数（何番目の予測か）
+bool          syncStarted     = false;  // 最初の拍を検出済みか（配線不要の基準時刻確定フラグ）
+unsigned long startTime       = 0;      // 最初に拍を検出した瞬間のmillis()（基準時刻）
 
 // ===== 関数 =====
 // フォトトランジスタの割り込み
@@ -103,6 +105,9 @@ void updateTempoByPhoto() {
     previousBeatTime     = currentBeatTime;
     previousNextBeatTime = nextBeatTime;
     nextBeatTime         = currentBeatTime * 2;
+    // 最初に拍を検出した瞬間を基準時刻とする（配線不要）
+    startTime             = currentBeatTime;
+    syncStarted           = true;
   };
 
   if (syncStarted) {
