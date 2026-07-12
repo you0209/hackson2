@@ -11,7 +11,8 @@
  *   3. 「Light→Sound delay: XXXXus」が出力される
  *
  * 調整:
- *   PHOTO_THRESH  … フォトトランジスタの閾値（光を検出するレベル）
+ *   PHOTO_THRESH  … フォトトランジスタの検出閾値（%）。photoISRと同じ基準
+ *   DEBOUNCE_MS   … 同一拍の二重カウント防止（ms）。photoISRと同じ基準
  *   MIC_THRESH    … マイクの閾値（音を検出するレベル）
  *   TIMEOUT_US    … 光を検出後この時間内に音が来なければタイムアウト（us）
  */
@@ -19,37 +20,67 @@
 #define PHOTO_PIN   A0
 #define MIC_PIN     A1
 
-#define PHOTO_THRESH  500   // 0〜1023、光が当たると上がる場合は高め、下がる場合は低めに設定
+const float          PHOTO_THRESH = 10.0f;      // 検出閾値（%）
+const unsigned long  DEBOUNCE_MS  = 200;        // デバウンス時間
 #define MIC_THRESH    550   // 無音時の中央値（約512）より少し高め
 #define TIMEOUT_US    500000UL  // 500ms タイムアウト
 
+// フォトトランジスタ（photoISRと同じロジック）
+bool          beatDetected = false;
+bool          high         = false;
+bool          stateHigh    = false;
+float         photoValue   = 0.0f;
+unsigned long lastBeatTime = 0;
+
 bool  waiting     = false;   // 光検出待ち
 unsigned long lightTime = 0;
+
+// 10%基準・立ち上がりエッジ検出。highの間とhighから200msは判定しない
+void photoISR() {
+  unsigned long now = millis();
+  if (now - lastBeatTime >= DEBOUNCE_MS) {
+    int photoRaw = analogRead(PHOTO_PIN);
+    photoValue = (float)photoRaw / 1023.0f * 100.0f;
+    if (photoValue >= PHOTO_THRESH) high = true;
+    else high = false;
+    if (high) {
+      if (!stateHigh) {
+        beatDetected = true;
+        lastBeatTime = now;
+        stateHigh    = true;
+      }
+    } else {
+      stateHigh = false;
+    }
+  }
+}
 
 void setup() {
   Serial.begin(115200);
   Serial.println("lag_measure2 ready");
   Serial.print("PHOTO_THRESH="); Serial.print(PHOTO_THRESH);
-  Serial.print("  MIC_THRESH="); Serial.println(MIC_THRESH);
+  Serial.print("%  MIC_THRESH="); Serial.println(MIC_THRESH);
   Serial.println("--- waiting for light ---");
 }
 
 void loop() {
-  int photoVal = analogRead(PHOTO_PIN);
+  photoISR();
 
   if (!waiting) {
     // 光検出待ち
-    if (photoVal >= PHOTO_THRESH) {
+    if (beatDetected) {
+      beatDetected = false;
       lightTime = micros();
       waiting = true;
       Serial.print("Light detected! photo=");
-      Serial.print(photoVal);
-      Serial.print(" at ");
+      Serial.print(photoValue);
+      Serial.print("% at ");
       Serial.print(lightTime);
       Serial.println("us");
     }
   } else {
-    // 音検出 or タイムアウト待ち
+    // 音検出 or タイムアウト待ち（この間の光検出は破棄）
+    beatDetected = false;
     int micVal = analogRead(MIC_PIN);
 
     if (micVal >= MIC_THRESH) {

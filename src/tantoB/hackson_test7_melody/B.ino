@@ -48,13 +48,13 @@ const char* detectColor(uint16_t r, uint16_t g, uint16_t b, int& outIndex) {
   struct ColorRef { float r, g, b; const char* name; };
 
   static const ColorRef refs[] = {
-    {0.9968f, 0.0798f, 0.0000f, "Red"},
-    {0.0571f, 0.9705f, 0.2341f, "Green"},
-    {0.0120f, 0.2908f, 0.9567f, "Blue"},
-    {0.3935f, 0.8984f, 0.1952f, "Yellow"},
-    {0.0406f, 0.7749f, 0.6308f, "Cyan"},
-    {0.7233f, 0.2504f, 0.6435f, "Magenta"},
-    {0.2859f, 0.7534f, 0.5922f, "White"},
+    {0.9972f, 0.0749f, 0.0000f, "Red"},
+    {0.0545f, 0.9722f, 0.2278f, "Green"},
+    {0.0107f, 0.2915f, 0.9565f, "Blue"},
+    {0.3878f, 0.9017f, 0.1911f, "Yellow"},
+    {0.0403f, 0.7924f, 0.6087f, "Cyan"},
+    {0.9407f, 0.2471f, 0.6247f, "Magenta"},
+    {0.2854f, 0.7706f, 0.5698f, "White"},
   };
   const int refCount = sizeof(refs) / sizeof(refs[0]);
 
