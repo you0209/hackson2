@@ -21,7 +21,6 @@
  */
 
 #define PHOTO_PIN     A0
-#define PHOTO_INT_PIN 2
 
 const float PHOTO_THRESH = 10.0f;   // 検出閾値（%）
 const int   DEBOUNCE_MS  = 200;     // デバウンス時間
@@ -59,8 +58,7 @@ void photoISR() {
 
 void setup() {
   Serial.begin(115200);
-  pinMode(PHOTO_INT_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(PHOTO_INT_PIN), photoISR, CHANGE);
+  pinMode(PHOTO_PIN,INPUT);
   Serial.println("beat_rate_test_B ready — waiting for first beat...");
 }
 
