@@ -1,6 +1,6 @@
 // ===== 変数定義 =====
 //カラーセンサ
-const char* PLAY_COLOR_NAME = "Red";
+const char* PLAY_COLOR_NAME = "Yellow";
 int         colorIndex      = -1;
 
 // フォトトランジスタ
@@ -32,13 +32,15 @@ void photoISR() {
   if (now - lastBeatTime >= 200) {
     int photoRaw = analogRead(PHOTO_PIN);
     photoValue = (float)photoRaw / 1023.0 * 100.0;
-    if (photoValue >= 40.0) high = true;
+    if (photoValue >= 10.0) high = true;
     else high = false;
-    if (high && !stateHigh) {
-      beatDetected = true;
-      currentBeatTime = millis();
-      lastBeatTime = currentBeatTime;
-      stateHigh = true;
+    if (high) {
+      if(!stateHigh) {
+        beatDetected = true;
+        currentBeatTime = millis();
+        lastBeatTime = currentBeatTime;
+        stateHigh = true;
+      };
     }
     else stateHigh = false;
   };
@@ -49,13 +51,13 @@ const char* detectColor(uint16_t r, uint16_t g, uint16_t b, int& outIndex) {
   struct ColorRef { float r, g, b; const char* name; };
 
   static const ColorRef refs[] = {
-    {0.9971f, 0.0761f, 0.0000f, "Red"},
-    {0.0507f, 0.9692f, 0.2409f, "Green"},
-    {0.0036f, 0.2950f, 0.9555f, "Blue"},
-    {0.5271f, 0.8306f, 0.1798f, "Yellow"},
-    {0.0344f, 0.7824f, 0.6219f, "Cyan"},
-    {0.8517f, 0.2174f, 0.4769f, "Magenta"},
-    {0.4008f, 0.7343f, 0.5482f, "White"},
+    {0.9972f, 0.0749f, 0.0000f, "Red"},
+    {0.0545f, 0.9722f, 0.2278f, "Green"},
+    {0.0107f, 0.2915f, 0.9565f, "Blue"},
+    {0.3878f, 0.9017f, 0.1911f, "Yellow"},
+    {0.0403f, 0.7924f, 0.6087f, "Cyan"},
+    {0.9407f, 0.2471f, 0.6247f, "Magenta"},
+    {0.2854f, 0.7706f, 0.5698f, "White"},
   };
   const int refCount = sizeof(refs) / sizeof(refs[0]);
 
@@ -84,6 +86,10 @@ void readColor() {
 void updateTempoByPhoto() {
   if (previousBeatTime != 0) {
     float measuredBeatInterval = currentBeatTime - previousBeatTime;
+    if (measuredBeatInterval > estimatedBeatInterval * 1.5f) {
+      beatMissRecovered = true;
+      measuredBeatInterval = estimatedBeatInterval;
+    };
     float tempoErrorRate       = abs(measuredBeatInterval - estimatedBeatInterval) / estimatedBeatInterval * 100.0f;
     if (state != PREBEAT && tempoErrorRate > TEMPO_CHANGE_THRESH)
       estimatedBeatInterval = measuredBeatInterval;
@@ -190,44 +196,14 @@ void showMatrix() {
   matrix.renderBitmap(frame, 8, 12);
 };
 
-const int     BEAT_BASE_MS   = 600;  // 基準間隔
-const int     BEAT_JITTER_MS = 3;    // ±このくらいずらす
-unsigned long nextTestBeat   = 0;
-int           beatCount      = 0;
-bool          canBeat = true;
-
-void simulateBeat() {
-  unsigned long now = millis();
-  if (now >= nextTestBeat) {
-    beatCount++;
-    canBeat = true;
-    colorName = "White";
-    if (beatCount >= 4) {
-      colorName = "Red";
-      int cbr = random(1,100);
-      if (cbr <= 50) {
-        canBeat = false;
-        beatCount = 0;
-        Serial.println("miss");
-      };
-    };
-    if (canBeat) {
-      if (state == PLAYING) isPlaying = true;
-      beatDetected    = true;
-      currentBeatTime = now;
-      lastBeatTime    = currentBeatTime;
-      int jitter = random(-BEAT_JITTER_MS, BEAT_JITTER_MS + 1); // -50~+50
-      nextTestBeat = now + BEAT_BASE_MS + jitter;
-    };
-  };
-};
-
 // ===== メインループ =====
 void B_loop() {
-  simulateBeat();
+  led();
+  photoISR();
   if (beatDetected) {
     beatFlashUntil  = millis() + BEAT_FLASH_MS;
     detectCount++;
+    readColor();
     if (state == PREBEAT) prebeatCount++;
     if (state != IDLE) {
       if (!isPlaying && strcmp(colorName, PLAY_COLOR_NAME) == 0) isPlaying = true;
