@@ -18,8 +18,9 @@ const float   TEMPO_CHANGE_THRESH   = 10.0f;
 float         previousNextBeatTime  = 0;
 
 // テンポ変化からの復帰計測
-int  exceedStreak   = 0;      // 連続でTEMPO_CHANGE_THRESHを超えた拍数
-bool inExceedStreak = false;  // 超過が継続中か
+int  exceedStreak    = 0;      // 連続でTEMPO_CHANGE_THRESHを超えた拍数
+bool inExceedStreak  = false;  // 超過が継続中か
+bool streakIsFaster  = false;  // 今回のストリークがBPM上昇方向か（開始時に確定）
 
 // 状態変化
 int         prebeatCount       = 0;
@@ -83,26 +84,37 @@ void readColor() {
 
 // フォトトランジスタの値より次の拍を予測
 // hackson_test7と同じ計算・分岐に加え、TEMPO_CHANGE_THRESHの連続超過拍数を
-// 数え、収まった時点で「何拍で通常状態に戻ったか」を出力する。
+// 数え、収まった時点で「何拍で通常状態に戻ったか」「BPMが上がったか下がったか」を出力する。
 void updateTempoByPhoto() {
   if (previousBeatTime != 0) {
     float measuredBeatInterval = currentBeatTime - previousBeatTime;
     float tempoErrorRate       = abs(measuredBeatInterval - estimatedBeatInterval) / estimatedBeatInterval * 100.0f;
+    // 拍間隔が短くなった=BPM上昇、長くなった=BPM低下
+    bool  isFaster              = (measuredBeatInterval < estimatedBeatInterval);
 
     bool exceeded = (state != PREBEAT && tempoErrorRate > TEMPO_CHANGE_THRESH);
 
     if (exceeded) {
+      if (!inExceedStreak) streakIsFaster = isFaster;  // ストリーク開始時の方向を記録
       exceedStreak++;
       inExceedStreak = true;
-      Serial.print("[tempo] 変化検出中 errorRate=");
+      Serial.print("[tempo] 変化検出中 ");
+      Serial.print(isFaster ? "UP(速く)" : "DOWN(遅く)");
+      Serial.print(" errorRate=");
       Serial.print(tempoErrorRate);
-      Serial.print("%  連続");
+      Serial.print("%  BPM ");
+      Serial.print(60000.0f / estimatedBeatInterval);
+      Serial.print("->");
+      Serial.print(60000.0f / measuredBeatInterval);
+      Serial.print("  連続");
       Serial.print(exceedStreak);
       Serial.println("拍目");
       estimatedBeatInterval = measuredBeatInterval;
     } else {
       if (inExceedStreak) {
-        Serial.print("=== テンポ変化から ");
+        Serial.print("=== テンポ変化(");
+        Serial.print(streakIsFaster ? "BPM上昇" : "BPM低下");
+        Serial.print(")から ");
         Serial.print(exceedStreak);
         Serial.println(" 拍で通常状態に戻りました ===");
         exceedStreak   = 0;
