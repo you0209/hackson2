@@ -31,11 +31,13 @@ void photoISR() {
     photoValue = (float)photoRaw / 1023.0 * 100.0;
     if (photoValue >= 10.0) high = true;
     else high = false;
-    if (high && !stateHigh) {
-      beatDetected = true;
-      currentBeatTime = millis();
-      lastBeatTime = currentBeatTime;
-      stateHigh = true;
+    if (high) {
+      if(!stateHigh) {
+        beatDetected = true;
+        currentBeatTime = millis();
+        lastBeatTime = currentBeatTime;
+        stateHigh = true;
+      };
     }
     else stateHigh = false;
   };

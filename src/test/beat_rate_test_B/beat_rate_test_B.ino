@@ -29,7 +29,10 @@ const unsigned long TIMEOUT_MS = 3000UL; // 3秒光が来なければ終了
 
 volatile bool beatDetected = false;
 volatile bool stateHigh    = false;
+volatile bool high         = false;
+volatile float photoValue  = 0.0f;
 unsigned long lastBeatTime = 0;
+unsigned long currentBeatTime = 0;
 int detectedCount = 0;
 bool testRunning  = false;
 bool testDone     = false;
@@ -37,17 +40,21 @@ unsigned long lastDetectTime = 0;
 
 void photoISR() {
   unsigned long now = millis();
-  if (now - lastBeatTime < DEBOUNCE_MS) return;
-
-  int raw = analogRead(PHOTO_PIN);
-  float pct = (float)raw / 1023.0f * 100.0f;
-
-  bool high = (pct >= PHOTO_THRESH);
-  if (high && !stateHigh) {
-    beatDetected = true;
-    lastBeatTime = now;
+  if (now - lastBeatTime >= DEBOUNCE_MS) {
+    int photoRaw = analogRead(PHOTO_PIN);
+    photoValue = (float)photoRaw / 1023.0 * 100.0;
+    if (photoValue >= PHOTO_THRESH) high = true;
+    else high = false;
+    if (high) {
+      if (!stateHigh) {
+        beatDetected = true;
+        currentBeatTime = millis();
+        lastBeatTime = currentBeatTime;
+        stateHigh = true;
+      };
+    }
+    else stateHigh = false;
   }
-  stateHigh = high;
 }
 
 void setup() {
