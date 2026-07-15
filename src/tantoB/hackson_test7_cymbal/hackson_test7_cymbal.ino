@@ -16,7 +16,6 @@ unsigned long currentBeatTime = 0;
 unsigned long lastBeatTime    = 0;
 bool          beatUpdated     = false; //nectBeatTime更新時にtrue
 bool          isPlaying       = false; //演奏開始時true
-bool          beatMissRecovered = false; //見逃した拍を検出しnoteIndex調整が必要な時true
 const char*   colorName       = "Unknown";
 enum          State           {IDLE, PREBEAT, PLAYING};
 State         state           = IDLE;

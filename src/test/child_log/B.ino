@@ -88,10 +88,6 @@ void readColor() {
 void updateTempoByPhoto() {
   if (previousBeatTime != 0) {
     float measuredBeatInterval = currentBeatTime - previousBeatTime;
-    if (measuredBeatInterval > estimatedBeatInterval * 1.5f) {
-      beatMissRecovered = true;
-      measuredBeatInterval = estimatedBeatInterval;
-    };
     float tempoErrorRate       = abs(measuredBeatInterval - estimatedBeatInterval) / estimatedBeatInterval * 100.0f;
     if (state != PREBEAT && tempoErrorRate > TEMPO_CHANGE_THRESH)
       estimatedBeatInterval = measuredBeatInterval;
